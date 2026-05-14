@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-每日投资简报生成器：从 Yahoo Finance 拉取持仓行情与新闻，调用 DeepSeek API 完成中文翻译/解读/重要性排序，渲染成 HTML 报告，并通过 macOS 系统通知与 Mail.app 发送给用户。
+每日投资简报生成器：从 Yahoo Finance 拉取持仓行情与新闻，调用 DeepSeek API 完成中文翻译/解读/重要性排序，渲染成 HTML 报告，通过 SMTP 发送邮件（HTML inline 进正文），并在 macOS 上发系统通知。
 
 代码组织为 `daily_report/` Python 包；`fetch_report.py` 是仅 5 行的入口（保持向后兼容现有 cron）。
 
@@ -54,13 +54,19 @@ prompts/
 6. `summarize_stock_news()` 按股票批量调用 LLM，为每条新闻生成 200-300 字中文解读；对 ETF 标的，若 LLM 判定新闻不相关（`analysis == "IRRELEVANT"`），会做关键词兜底（黄金类用 `gold/mining/bullion/...`；加拿大银行类用 `bank/tsx/bmo/...`）防止被误删。
 7. `render_chart_png()` 用 matplotlib 把日内走势生成 PNG，再以 base64 内嵌进 HTML（关键：邮件附件场景下不能依赖外链图）。
 8. `generate_html()` + `_render_*` 系列函数拼装最终 HTML。样式高度自定义（深色主题、CSS 变量集中在 `:root`）。
-9. `send_notification()` 用 `osascript display notification` 发系统通知；`send_email()` 用 AppleScript 驱动 Mail.app 把 HTML 作为附件发送 —— 邮件正文是固定提示语，HTML 不是 inline 而是附件。
+9. `send_notification()` 在 macOS 上用 `osascript display notification` 发系统通知，非 macOS 静默 skip；`send_email()` 用 `smtplib + email.mime.EmailMessage`，HTML 通过 `add_alternative(..., subtype="html")` 内嵌进正文（不再是附件）。
 
 **LLM 调用规范**：所有 DeepSeek 调用走 `news_llm._client()` 工厂（`OpenAI(base_url="https://api.deepseek.com")`）+ `deepseek-chat` 模型，温度区分用途（翻译 0.1、解读 0.5、要闻排序 0.3）。响应文本统一过 `_extract_json()` 剥围栏再解析。
 
+**SMTP 调用规范**：`send_email()` 从环境变量读 `SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / EMAIL_FROM`。当前生产用 iCloud (`smtp.mail.me.com:587`)；Microsoft 个人 Outlook.com 账号已被切到 OAuth2-only，basic SMTP auth 不再可用，所以不要尝试。
+
 **Prompt 模板**：prompts 文件用 Python `.format()` 占位符，JSON 示例中的字面 `{ }` 必须写作 `{{ }}`（这是 `.format()` 的转义约定）。
 
-**平台依赖**：脚本只在 macOS 可用 —— `osascript`、Mail.app 都是 macOS 独有的。`matplotlib.use("Agg")` 是显式声明用无头后端，不要改。
+**Env 加载**：`.env` 在 `daily_report/__init__.py` 包导入时一次性加载，子模块任意 import 顺序都读得到环境变量。
+
+**Email-safe CSS 约束**：HTML 通过邮件发送时由 Outlook for iOS / Apple Mail 渲染，**禁止使用 CSS 变量**（`var(--xxx)` 不被解析），所有颜色必须以字面 hex / rgba 值出现在 `<style>` 块中。`<details>/<summary>` 在邮件客户端里无法折叠，相当于普通 div。`flex` 的 `gap` 属性在 iOS Outlook 不支持，多个 inline 元素之间的间距用 `display: inline-block; margin-right: Npx` 实现。
+
+**平台依赖**：通知（`osascript`）仅在 macOS 可用；邮件发送已跨平台（SMTP）。`matplotlib.use("Agg")` 是显式声明用无头后端，不要改。
 
 ## 修改提示
 

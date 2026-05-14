@@ -23,33 +23,12 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>每日投资简报 — {today}</title>
 <style>
-  :root {{
-    --bg: #080c12;
-    --surface: #11161e;
-    --card: #161c26;
-    --card-hover: #1b2230;
-    --text: #e6e8ec;
-    --text-secondary: #8b919c;
-    --text-dim: #565c67;
-    --up: #00c853;
-    --up-bg: rgba(0,200,83,0.08);
-    --up-glow: rgba(0,200,83,0.15);
-    --down: #ff3d4f;
-    --down-bg: rgba(255,61,79,0.08);
-    --down-glow: rgba(255,61,79,0.12);
-    --accent: #c9a96e;
-    --accent-dim: rgba(201,169,110,0.15);
-    --border: #1e2733;
-    --border-light: #263040;
-    --radius: 14px;
-    --radius-sm: 10px;
-  }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
 
   body {{
     font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background: #080c12;
+    color: #e6e8ec;
     line-height: 1.6;
     padding: 14px 10px;
     -webkit-font-smoothing: antialiased;
@@ -66,19 +45,19 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   .header h1 {{
     font-size: 1.45rem;
     font-weight: 700;
-    color: var(--text);
+    color: #e6e8ec;
     letter-spacing: 2px;
   }}
   .header .date {{
     font-size: .88rem;
-    color: var(--text-dim);
+    color: #565c67;
     margin-top: 6px;
     letter-spacing: 0.5px;
   }}
   .header .divider {{
     width: 40px;
     height: 2px;
-    background: var(--accent);
+    background: #c9a96e;
     margin: 14px auto 0;
     border-radius: 1px;
     opacity: 0.6;
@@ -89,7 +68,7 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     font-weight: 700;
     margin: 28px 0 12px;
     letter-spacing: 3px;
-    color: var(--text-secondary);
+    color: #8b919c;
     text-transform: uppercase;
     display: flex;
     align-items: center;
@@ -99,34 +78,34 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--border);
+    background: #1e2733;
   }}
 
   .overview-table {{
-    background: var(--card);
-    border-radius: var(--radius);
+    background: #161c26;
+    border-radius: 14px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    border: 1px solid var(--border);
+    border: 1px solid #1e2733;
     margin-bottom: 16px;
   }}
   .overview-table table {{ width: 100%; min-width: 520px; border-collapse: collapse; font-size: .88rem; }}
   .overview-table th {{
-    background: var(--surface);
+    background: #11161e;
     padding: 10px 6px;
     text-align: right;
     font-size: .74rem;
     font-weight: 600;
-    color: var(--text-dim);
+    color: #565c67;
     letter-spacing: 1px;
     white-space: nowrap;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #1e2733;
   }}
   .overview-table th:first-child {{ text-align: left; padding-left: 16px; }}
   .overview-table td {{
     padding: 10px 6px;
     text-align: right;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #1e2733;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     font-family: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
@@ -138,39 +117,39 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     font-weight: 700;
     font-size: .9rem;
     font-family: inherit;
-    color: var(--text);
+    color: #e6e8ec;
   }}
-  .overview-table .cn-name {{ font-size: .72rem; color: var(--text-dim); display: block; font-family: inherit; }}
-  .up {{ color: var(--up); font-weight: 600; }}
-  .down {{ color: var(--down); font-weight: 600; }}
+  .overview-table .cn-name {{ font-size: .72rem; color: #565c67; display: block; font-family: inherit; }}
+  .up {{ color: #00c853; font-weight: 600; }}
+  .down {{ color: #ff3d4f; font-weight: 600; }}
 
   .highlight-card {{
-    background: var(--card);
-    border-radius: var(--radius-sm);
+    background: #161c26;
+    border-radius: 10px;
     padding: 14px 16px;
     margin-bottom: 8px;
-    border: 1px solid var(--border);
+    border: 1px solid #1e2733;
     position: relative;
     transition: border-color .2s;
   }}
-  .highlight-card.rank-1 {{ border-color: var(--accent); box-shadow: 0 0 20px var(--accent-dim); }}
+  .highlight-card.rank-1 {{ border-color: #c9a96e; box-shadow: 0 0 20px rgba(201,169,110,0.15); }}
   .highlight-card.rank-2 {{ border-color: #7c8aa0; }}
   .highlight-card .hl-title {{
     font-size: .96rem;
     font-weight: 600;
-    color: var(--text);
+    color: #e6e8ec;
     margin-bottom: 5px;
     line-height: 1.4;
   }}
   .highlight-card .hl-summary {{
     font-size: .84rem;
-    color: var(--text-secondary);
+    color: #8b919c;
     margin-bottom: 6px;
     line-height: 1.5;
   }}
   .highlight-card .hl-meta {{
     font-size: .74rem;
-    color: var(--text-dim);
+    color: #565c67;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -185,15 +164,15 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     font-weight: 600;
     letter-spacing: 0.5px;
   }}
-  .hl-tag-macro {{ background: rgba(201,169,110,0.18); color: var(--accent); }}
+  .hl-tag-macro {{ background: rgba(201,169,110,0.18); color: #c9a96e; }}
   .hl-tag-stock {{ background: rgba(100,140,200,0.18); color: #8ab4f8; }}
 
   .stock-card {{
-    background: var(--card);
-    border-radius: var(--radius);
+    background: #161c26;
+    border-radius: 14px;
     padding: 18px;
     margin-bottom: 16px;
-    border: 1px solid var(--border);
+    border: 1px solid #1e2733;
   }}
   .stock-card .sc-header {{
     display: flex;
@@ -204,10 +183,10 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   .stock-card .sc-symbol {{
     font-size: 1.15rem;
     font-weight: 700;
-    color: var(--text);
+    color: #e6e8ec;
     letter-spacing: 0.5px;
   }}
-  .stock-card .sc-name {{ font-size: .78rem; color: var(--text-dim); margin-top: 1px; }}
+  .stock-card .sc-name {{ font-size: .78rem; color: #565c67; margin-top: 1px; }}
   .stock-card .sc-price {{
     font-size: 1.45rem;
     font-weight: 700;
@@ -224,13 +203,13 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   .stock-card .sc-changes span {{
     font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace;
     font-variant-numeric: tabular-nums;
-    color: var(--text-secondary);
+    color: #8b919c;
     font-size: .82rem;
   }}
   .stock-card .sc-changes b {{ font-weight: 600; }}
   .stock-card .sc-info {{
     font-size: .76rem;
-    color: var(--text-dim);
+    color: #565c67;
     margin-bottom: 4px;
     display: flex;
     flex-wrap: wrap;
@@ -249,19 +228,19 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   }}
   .stock-card .chart-label {{
     font-size: .7rem;
-    color: var(--text-dim);
+    color: #565c67;
     text-align: center;
     letter-spacing: 1px;
   }}
   .stock-card .sc-news {{
     margin-top: 10px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid #1e2733;
     padding-top: 10px;
   }}
   .stock-card .sc-news-item {{
     font-size: .8rem;
     padding: 3px 0;
-    color: var(--text-secondary);
+    color: #8b919c;
     line-height: 1.5;
   }}
   .sc-news-detail {{
@@ -270,7 +249,7 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   }}
   .sc-news-detail summary {{
     font-size: .8rem;
-    color: var(--text-secondary);
+    color: #8b919c;
     padding: 4px 0;
     outline: none;
     list-style: none;
@@ -284,7 +263,7 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     content: '▸';
     display: inline-block;
     font-size: .7rem;
-    color: var(--accent);
+    color: #c9a96e;
     transition: transform .2s;
     flex-shrink: 0;
   }}
@@ -293,7 +272,7 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   }}
   .sc-news-src {{
     font-size: .65rem;
-    color: var(--text-dim);
+    color: #565c67;
     white-space: nowrap;
     flex-shrink: 0;
   }}
@@ -303,13 +282,13 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     line-height: 1.7;
     padding: 8px 0 8px 18px;
     margin-top: 2px;
-    border-left: 2px solid var(--border);
+    border-left: 2px solid #1e2733;
   }}
 
   .footer {{
     text-align: center;
     font-size: .72rem;
-    color: var(--text-dim);
+    color: #565c67;
     margin-top: 24px;
     padding-bottom: 28px;
     letter-spacing: 0.5px;
@@ -358,7 +337,7 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
 
 def _render_highlights(highlights):
     if not highlights:
-        return '<div class="highlight-card"><span style="color:var(--text-dim)">暂无重要新闻</span></div>'
+        return '<div class="highlight-card"><span style="color:#565c67">暂无重要新闻</span></div>'
     items = []
     for h in highlights:
         rank = h.get("rank", 99)

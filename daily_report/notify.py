@@ -1,8 +1,15 @@
+import os
+import smtplib
+import ssl
 import subprocess
+import sys
+from email.message import EmailMessage
 
 
 def send_notification(title, message):
-    """macOS 系统通知"""
+    """macOS 系统通知；非 macOS 平台静默跳过。"""
+    if sys.platform != "darwin":
+        return
     try:
         subprocess.run([
             "osascript", "-e",
@@ -13,24 +20,35 @@ def send_notification(title, message):
         print(f"  [WARN] 通知发送失败: {e}")
 
 
-def send_email(to, subject, html_content, email_config, report_path):
-    """通过 Mail.app 发送报告（HTML 作为附件）"""
-    subject_escaped = subject.replace('"', '\\"')
-    report_escaped = str(report_path.absolute()).replace('"', '\\"')
+def send_email(to, subject, html_content):
+    """通过 SMTP 发送 HTML 邮件，HTML 直接 inline 进正文。
 
-    applescript = f'''
-    tell application "Mail"
-        set newMessage to make new outgoing message with properties {{subject:"{subject_escaped}", visible:false}}
-        tell newMessage
-            make new to recipient at end of to recipients with properties {{address:"{to}"}}
-            set content to "今日投资简报已生成，请下载附件后用浏览器打开查看完整报告（含走势图）。"
-            make new attachment with properties {{file name:POSIX file "{report_escaped}"}} at after last paragraph
-            send
-        end tell
-    end tell
-    '''
+    必需环境变量：SMTP_HOST、SMTP_USER、SMTP_PASS。
+    可选：SMTP_PORT（默认 587）、EMAIL_FROM（默认与 SMTP_USER 相同）。
+    """
+    host = os.environ.get("SMTP_HOST")
+    port = int(os.environ.get("SMTP_PORT", "587"))
+    user = os.environ.get("SMTP_USER")
+    password = os.environ.get("SMTP_PASS")
+    sender = os.environ.get("EMAIL_FROM") or user
+
+    if not (host and user and password):
+        print("  [WARN] SMTP 未配置（缺少 SMTP_HOST / SMTP_USER / SMTP_PASS），跳过发邮件")
+        return
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = to
+    msg.set_content("您的邮件客户端不支持 HTML 显示，请在支持 HTML 的客户端中打开。")
+    msg.add_alternative(html_content, subtype="html")
+
     try:
-        subprocess.run(["osascript", "-e", applescript], check=True, timeout=30)
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(host, port, timeout=30) as s:
+            s.starttls(context=ctx)
+            s.login(user, password)
+            s.send_message(msg)
         print(f"  邮件已发送至 {to}")
     except Exception as e:
         print(f"  [WARN] 邮件发送失败: {e}")

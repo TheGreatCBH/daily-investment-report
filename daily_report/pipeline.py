@@ -75,6 +75,6 @@ def main():
 
     to = email_config.get("address", "")
     if to:
-        send_email(to, f"每日投资简报 — {today}", html, email_config, path)
+        send_email(to, f"每日投资简报 — {today}", html)
 
     return str(path)

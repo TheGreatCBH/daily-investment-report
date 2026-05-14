@@ -54,14 +54,19 @@
 - [x] 顺便清掉死代码 `parse_date_str` ✓ 2026-05-14
 - [x] 顺便把 `process_news_with_llm` 内硬编码的 watchlist 字符串改成动态 `user_symbols` ✓ 2026-05-14
 - [x] 端到端验证通过（7 标的 OK，DeepSeek 3 次调用 OK，邮件已发） ✓ 2026-05-14
+- [x] commit `c050f68`（+1087 -1045，15 文件） ✓ 2026-05-14
 
-### 4. [ ] Python SMTP 邮件（替代 Mail.app）
+### 4. [~] Python SMTP 邮件（替代 Mail.app）
 
-- [ ] 用 `smtplib + email.mime.multipart` 实现发送
-- [ ] HTML inline 进正文（不再用附件形式）
-- [ ] 配置项进 `.env`：`SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `EMAIL_FROM`
-- [ ] macOS 通知保留，无配置/失败时优雅 skip
-- [ ] 删除 `send_email()` 里 AppleScript 实现
+- [x] 用 `smtplib + email.mime.EmailMessage` 实现发送 ✓ 2026-05-14
+- [x] HTML inline 进正文（`add_alternative(..., subtype="html")`），不再用附件 ✓ 2026-05-14
+- [x] 配置项进 `.env`：`SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `EMAIL_FROM` ✓ 2026-05-14
+- [x] macOS 通知用 `sys.platform == "darwin"` 守卫，无配置/失败时优雅 skip ✓ 2026-05-14
+- [x] 删除 `send_email()` 里 AppleScript 实现 ✓ 2026-05-14
+- [x] `load_dotenv` 从 `config.py` 提到 `__init__.py`，任意子模块 import 顺序都能读到 env ✓ 2026-05-14
+- [x] 解决 SMTP 选型：Outlook personal 已被 Microsoft 切到 OAuth2-only，改用 iCloud SMTP（`smtp.mail.me.com:587` + Apple ID 应用密码）✓ 2026-05-14
+- [x] Email-safe CSS 修复：CSS 变量 `var(--xxx)` 替换为字面 hex，Outlook iOS 才能正确渲染颜色/背景 ✓ 2026-05-14
+- [ ] 浅色仪表盘重设计（render_html + chart 配色 + 修复 flex gap 间距 + details→div）—— 进行中
 
 ### 5. [ ] A 股 / H 股支持
 

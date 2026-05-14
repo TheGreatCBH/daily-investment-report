@@ -2,14 +2,12 @@ import json
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
+# 注意：.env 已由 daily_report/__init__.py 在包导入时加载，这里只负责读取。
 
 ROOT = Path(__file__).resolve().parent.parent
 WATCHLIST_PATH = ROOT / "watchlist.json"
 REPORTS_DIR = ROOT / "reports"
 PROMPTS_DIR = ROOT / "prompts"
-
-load_dotenv(ROOT / ".env")
 
 DEEPSEEK_API_KEY = os.environ["DEEPSEEK_API_KEY"]
 
