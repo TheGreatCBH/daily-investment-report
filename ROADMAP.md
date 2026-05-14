@@ -10,17 +10,15 @@
 
 ---
 
-## 待决策事项（动工前确认）
+## 待决策事项
 
-讨论于 2026-05-14，以下选项尚未拍板，开工时需要先选定：
-
-- [ ] `watchlist.json` 含真实邮箱 `bchen2001@outlook.com` —— public 仓库要不要保留？（建议拆 `watchlist.example.json` + `.gitignore` 真实文件）
-- [ ] `.claude/settings.local.json` 要不要 commit？
-- [ ] `reports/` 历史报告要不要清掉？
-- [ ] 模块化包名用 `src/` 还是 `daily_report/`？
-- [ ] HTML 的 CSS 要不要外置成 `templates/report.html` + `static/style.css`？
-- [ ] A/H 股新闻方案：A（yfinance 行情 + akshare 新闻）/ B（全 akshare）/ C（DeepSeek 联网搜索）？
-- [ ] 邮件 SMTP 通道：Gmail / Outlook / QQ-163 / 第三方 API（SendGrid / Resend）？
+- [x] `watchlist.json` → 拆 `watchlist.example.json`（commit）+ `watchlist.json`（gitignore） ✓ 2026-05-14
+- [x] `.claude/settings.local.json` → `.gitignore` 整个 `.claude/` ✓ 2026-05-14
+- [x] `reports/` → `.gitignore` 所有生成产物，保留 `reports/.gitkeep` ✓ 2026-05-14
+- [x] 模块化包名定为 `daily_report/` ✓ 2026-05-14
+- [x] HTML 保持单文件渲染（提取 `render_html.py`），不外置 CSS ✓ 2026-05-14
+- [ ] A/H 股新闻方案：A（yfinance 行情 + akshare 新闻）/ B（全 akshare）/ C（DeepSeek 联网搜索）？（项目 5）
+- [ ] 邮件 SMTP 通道：Gmail / Outlook / QQ-163 / 第三方 API（SendGrid / Resend）？（项目 4）
 
 ---
 
@@ -34,23 +32,28 @@
 - [x] 在 `~/.zshrc` 设置新 key（dotenv 留给项目 2）✓ 2026-05-14
 - [x] 跑一次脚本验证（7 只标的全 OK，DeepSeek 调用 OK，邮件已送达）✓ 2026-05-14
 
-### 2. [ ] Git 初始化 + 仓库基础设施
+### 2. [x] Git 初始化 + 仓库基础设施 ✓ 2026-05-14
 
-- [ ] `git init`
-- [ ] 写 `.gitignore`（含 `__pycache__/`、`.DS_Store`、`.Rhistory`、`.chartjs.cache`、`reports/*.html`、`reports/*.log`、`.env`，可能含 `watchlist.json`）
-- [ ] 创建 `.env.example`
-- [ ] （视决策）创建 `watchlist.example.json`
-- [ ] `requirements.txt` 加入 `python-dotenv`
-- [ ] 代码用 `dotenv.load_dotenv()` 加载 `.env`
-- [ ] 首个 commit
+- [x] `git init -b main` ✓ 2026-05-14
+- [x] 写 `.gitignore`（含 Python/macOS/编辑器残留/敏感配置/生成报告） ✓ 2026-05-14
+- [x] 创建 `.env.example` ✓ 2026-05-14
+- [x] 创建 `watchlist.example.json` ✓ 2026-05-14
+- [x] `requirements.txt` 加入 `python-dotenv` ✓ 2026-05-14
+- [x] `fetch_report.py` 加 `load_dotenv(ROOT / ".env")` ✓ 2026-05-14
+- [x] 写本地 `.env`（含真实 key，gitignored） ✓ 2026-05-14
+- [x] 首个 commit `2150a37`（amend 自 `058b7e6` 修正作者）✓ 2026-05-14
+- [x] git 全局身份设为 `TheGreatCBH <bchen2001@outlook.com>` ✓ 2026-05-14
 
-### 3. [ ] 代码模块化 + prompts 外置
+**冗余**：`DEEPSEEK_API_KEY` 目前同时存在于 `~/.zshrc` 与 `.env`，因 `load_dotenv` 默认不覆盖已存在的环境变量，两者同值时无差异；future-cleanup：可考虑从 `~/.zshrc` 删掉那一行，让 `.env` 成为唯一来源。
 
-- [ ] 按议定的目录结构拆分（包名待定）
-  - `config.py` / `market_data.py` / `news_llm.py` / `chart.py` / `render_html.py` / `notify.py`
-- [ ] 三个 DeepSeek prompts 抽到 `prompts/*.md`，代码用 `.format()` 注入变量
-- [ ] 入口 `fetch_report.py` 只剩 `main()` 流程编排
-- [ ] 验证：跑一次完整流程，对比报告 HTML 输出与重构前等价
+### 3. [x] 代码模块化 + prompts 外置 ✓ 2026-05-14
+
+- [x] 按 `daily_report/` 包结构拆分（config / formatting / chart / market_data / news_llm / render_html / notify / pipeline） ✓ 2026-05-14
+- [x] 三个 DeepSeek prompts 抽到 `prompts/*.md`，代码用 `.format()` 注入变量 ✓ 2026-05-14
+- [x] 入口 `fetch_report.py` 缩成 5 行（保持 cron 向后兼容） ✓ 2026-05-14
+- [x] 顺便清掉死代码 `parse_date_str` ✓ 2026-05-14
+- [x] 顺便把 `process_news_with_llm` 内硬编码的 watchlist 字符串改成动态 `user_symbols` ✓ 2026-05-14
+- [x] 端到端验证通过（7 标的 OK，DeepSeek 3 次调用 OK，邮件已发） ✓ 2026-05-14
 
 ### 4. [ ] Python SMTP 邮件（替代 Mail.app）
 

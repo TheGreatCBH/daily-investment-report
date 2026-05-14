@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-每日投资简报生成器：从 Yahoo Finance 拉取持仓行情与新闻，调用 DeepSeek API 完成中文翻译/解读/重要性排序，渲染成 HTML 报告，并通过 macOS 系统通知与 Mail.app 发送给用户。整个项目目前由单文件脚本 `fetch_report.py` 组成。
+每日投资简报生成器：从 Yahoo Finance 拉取持仓行情与新闻，调用 DeepSeek API 完成中文翻译/解读/重要性排序，渲染成 HTML 报告，并通过 macOS 系统通知与 Mail.app 发送给用户。
+
+代码组织为 `daily_report/` Python 包；`fetch_report.py` 是仅 5 行的入口（保持向后兼容现有 cron）。
 
 ## 常用命令
 
@@ -23,28 +25,50 @@ python fetch_report.py
 
 ## 架构要点
 
-**数据流（单进程顺序执行）**：
+**包结构**：
+
+```
+fetch_report.py                # 5 行入口，cron 调用此文件
+daily_report/
+  config.py                    # ROOT/paths/load_dotenv/DEEPSEEK_API_KEY/load_config
+  formatting.py                # fmt_change / fmt_price / nm / volume_badge
+  chart.py                     # render_chart_png（matplotlib → base64 PNG）
+  market_data.py               # search_news / fetch_ticker / fetch_macro_news
+  news_llm.py                  # 三个 DeepSeek 调用 + _client / _load_prompt / _extract_json
+  render_html.py               # generate_html + _render_*（高度自定义 CSS）
+  notify.py                    # send_notification / send_email（osascript + Mail.app）
+  pipeline.py                  # main() 流程编排
+prompts/
+  highlights.md                # process_news_with_llm 的 prompt，占位符 {items_json} {user_symbols}
+  stock_analysis.md            # summarize_stock_news 的 prompt，{symbol} {name} {description} {items_json} {items_len}
+  translate_titles.md          # translate_news_titles 的 prompt，{titles_list}
+```
+
+**数据流（`pipeline.main()` 顺序执行）**：
 
 1. `load_config()` 读取 `watchlist.json` —— 包含收件邮箱与标的列表。每个标的可选 `search_terms` 与 `description` 字段；带 `search_terms` 的（一般是 ETF）走关键词搜索新闻路径，不带的走 `Ticker.news`。
 2. `fetch_macro_news()` 用 `^GSPC` 拉取宏观大盘新闻。
 3. 对 watchlist 中每个标的执行 `fetch_ticker()`：行情、日/周/月涨跌、日内 5 分钟走势、PE/市值/52w 极值等指标，以及标的相关新闻（去重 + 按周一 3 天 / 平日 1 天的窗口过滤）。
-4. `process_news_with_llm()` 把所有新闻一次性丢给 DeepSeek，让它翻译标题、写 100-150 字摘要、跨宏观/个股按重要性排序，保留 10-15 条作为「今日要闻」。
+4. `process_news_with_llm()` 把所有新闻一次性丢给 DeepSeek，让它翻译标题、写 100-150 字摘要、跨宏观/个股按重要性排序，保留 10-15 条作为「今日要闻」。`user_symbols` 由 watchlist 动态拼出（不再硬编码）。
 5. `translate_news_titles()` 批量翻译每只标的卡片底部的新闻标题。
 6. `summarize_stock_news()` 按股票批量调用 LLM，为每条新闻生成 200-300 字中文解读；对 ETF 标的，若 LLM 判定新闻不相关（`analysis == "IRRELEVANT"`），会做关键词兜底（黄金类用 `gold/mining/bullion/...`；加拿大银行类用 `bank/tsx/bmo/...`）防止被误删。
 7. `render_chart_png()` 用 matplotlib 把日内走势生成 PNG，再以 base64 内嵌进 HTML（关键：邮件附件场景下不能依赖外链图）。
 8. `generate_html()` + `_render_*` 系列函数拼装最终 HTML。样式高度自定义（深色主题、CSS 变量集中在 `:root`）。
 9. `send_notification()` 用 `osascript display notification` 发系统通知；`send_email()` 用 AppleScript 驱动 Mail.app 把 HTML 作为附件发送 —— 邮件正文是固定提示语，HTML 不是 inline 而是附件。
 
-**LLM 调用规范**：所有 DeepSeek 调用都用 `OpenAI(base_url="https://api.deepseek.com")` 客户端 + `deepseek-chat` 模型，温度区分用途（翻译 0.1、解读 0.5、要闻排序 0.3），响应文本统一按 ```` ```json ```` 围栏剥离再解析。
+**LLM 调用规范**：所有 DeepSeek 调用走 `news_llm._client()` 工厂（`OpenAI(base_url="https://api.deepseek.com")`）+ `deepseek-chat` 模型，温度区分用途（翻译 0.1、解读 0.5、要闻排序 0.3）。响应文本统一过 `_extract_json()` 剥围栏再解析。
+
+**Prompt 模板**：prompts 文件用 Python `.format()` 占位符，JSON 示例中的字面 `{ }` 必须写作 `{{ }}`（这是 `.format()` 的转义约定）。
 
 **平台依赖**：脚本只在 macOS 可用 —— `osascript`、Mail.app 都是 macOS 独有的。`matplotlib.use("Agg")` 是显式声明用无头后端，不要改。
 
 ## 修改提示
 
 - 新增标的：编辑 `watchlist.json`。ETF 类务必填 `search_terms`，否则 `Ticker.news` 大概率为空。
-- 调整新闻数量/窗口：`fetch_ticker()` 内 `max_age_days` 与 `[:5]`、`search_news(..., max_results=4)` 控制总量；`process_news_with_llm()` prompt 中的「保留 10-15 条」要同步。
-- 改 HTML 样式：CSS 集中在 `generate_html()` 的 `<style>` 块，移动端断点在 `@media (max-width: 480px)`。
-- 不要把 `DEEPSEEK_API_KEY` 的兜底值替换成真实密钥，应保持「环境变量优先 + 占位/失败回退」的形态。
+- 调整新闻数量/窗口：`market_data.fetch_ticker()` 内 `max_age_days` 与 `[:5]`、`search_news(..., max_results=4)` 控制总量；`prompts/highlights.md` 的「保留 10-15 条」要同步。
+- 改 HTML 样式：CSS 集中在 `render_html.generate_html()` 的 `<style>` 块（移动端断点 `@media (max-width: 480px)`）。
+- 改 prompt：编辑 `prompts/*.md`；如要新增占位符，同步更新 `news_llm.py` 里对应函数的 `.format()` 调用。
+- 不要把 `DEEPSEEK_API_KEY` 的兜底值写回 `config.py`，密钥来源永远是 `.env` 或环境变量。
 
 ## 任务进度跟踪
 
