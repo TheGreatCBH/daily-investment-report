@@ -95,6 +95,7 @@
 - [x] `examples/com.investment.daily-report.plist`：脱敏 launchd 模板（REPO_PATH 占位）✓ 2026-05-14
 - [x] Outlook personal OAuth2-only 的坑、Microsoft 不可用、iCloud 推荐路径写进 README ✓ 2026-05-14
 - [ ] 报告效果截图（暂不放，后续随时补）
+- [x] commit `3c257d0`（+366 -8，6 文件）✓ 2026-05-14
 
 ### 7. [ ] （可选 / 低优先）Windows + 英文 i18n
 
