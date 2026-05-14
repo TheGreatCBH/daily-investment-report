@@ -56,7 +56,7 @@
 - [x] 端到端验证通过（7 标的 OK，DeepSeek 3 次调用 OK，邮件已发） ✓ 2026-05-14
 - [x] commit `c050f68`（+1087 -1045，15 文件） ✓ 2026-05-14
 
-### 4. [~] Python SMTP 邮件（替代 Mail.app）
+### 4. [x] Python SMTP 邮件（替代 Mail.app）+ 浅色仪表盘重设计 ✓ 2026-05-14
 
 - [x] 用 `smtplib + email.mime.EmailMessage` 实现发送 ✓ 2026-05-14
 - [x] HTML inline 进正文（`add_alternative(..., subtype="html")`），不再用附件 ✓ 2026-05-14
@@ -66,7 +66,11 @@
 - [x] `load_dotenv` 从 `config.py` 提到 `__init__.py`，任意子模块 import 顺序都能读到 env ✓ 2026-05-14
 - [x] 解决 SMTP 选型：Outlook personal 已被 Microsoft 切到 OAuth2-only，改用 iCloud SMTP（`smtp.mail.me.com:587` + Apple ID 应用密码）✓ 2026-05-14
 - [x] Email-safe CSS 修复：CSS 变量 `var(--xxx)` 替换为字面 hex，Outlook iOS 才能正确渲染颜色/背景 ✓ 2026-05-14
-- [ ] 浅色仪表盘重设计（render_html + chart 配色 + 修复 flex gap 间距 + details→div）—— 进行中
+- [x] 浅色仪表盘重设计：冷调底色 `#f4f6f9` + 白卡 + 暖金 accent + 油墨绿/暗红涨跌色 ✓ 2026-05-14
+- [x] `chart.py`：matplotlib 配色全换（白底、林木绿/暗红），尺寸放大至 `figsize=(6.6, 2.5)`、`fontsize=9` ✓ 2026-05-14
+- [x] 修复 iOS Outlook 不支持 `flex gap`：`sc-info` / `sc-changes` 改用 `display: inline-block; margin-right` ✓ 2026-05-14
+- [x] `<details>/<summary>` 替换为普通 div（邮件客户端反正不支持折叠）✓ 2026-05-14
+- [x] 端到端验证通过（真实数据 7 标的 OK，邮件渲染正确）✓ 2026-05-14
 
 ### 5. [ ] A 股 / H 股支持
 
