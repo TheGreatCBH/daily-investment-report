@@ -24,10 +24,13 @@ def main():
         sym = item["symbol"]
         try:
             print(f"  → {sym} …", end=" ")
-            terms = item.get("search_terms")
-            data = fetch_ticker(sym, search_terms=terms)
+            data = fetch_ticker(
+                sym,
+                search_terms=item.get("search_terms"),
+                name=item.get("name"),
+            )
             results.append(data)
-            print(f"OK (${data['price']})")
+            print(f"OK ({data.get('currency_symbol', '$')}{data['price']})")
         except Exception as e:
             print(f"FAIL: {e}")
 

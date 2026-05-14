@@ -30,6 +30,24 @@
       "type": "etf",
       "search_terms": ["Canadian banks", "TSX banks"],
       "description": "追踪加拿大六大银行的等权重指数 ETF，关于加拿大银行、金融机构、加拿大金融行业的新闻都与其相关"
+    },
+    {
+      "symbol": "600519.SS",
+      "name": "贵州茅台",
+      "market": "SH",
+      "type": "stock"
+    },
+    {
+      "symbol": "000001.SZ",
+      "name": "平安银行",
+      "market": "SZ",
+      "type": "stock"
+    },
+    {
+      "symbol": "0700.HK",
+      "name": "腾讯控股",
+      "market": "HK",
+      "type": "stock"
     }
   ]
 }

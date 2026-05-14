@@ -323,20 +323,31 @@ def _render_highlights(highlights):
     return "\n".join(items)
 
 
+def _primary_secondary(d):
+    """A/H 股（纯数字代号）以名称为主、代号为副；美股/加股反之。"""
+    sym = d["symbol"]
+    name = d["name"]
+    if sym.endswith((".SS", ".SZ", ".HK")):
+        return name, sym
+    return sym, name
+
+
 def _render_overview(all_data):
     rows = []
     for d in all_data:
+        cur = d.get("currency_symbol", "$")
+        primary, secondary = _primary_secondary(d)
         dc, dc_cls = fmt_change(d["day_change"])
         wc, wc_cls = fmt_change(d["week_change"])
         mc, mc_cls = fmt_change(d["month_change"])
         rows.append(
             f"""<tr>
-              <td><span class="sym">{d['symbol']}</span><span class="cn-name">{d['name']}</span></td>
-              <td>{fmt_price(d['price'])}</td>
+              <td><span class="sym">{primary}</span><span class="cn-name">{secondary}</span></td>
+              <td>{fmt_price(d['price'], cur)}</td>
               <td class="{dc_cls}">{dc}</td>
               <td class="{wc_cls}">{wc}</td>
               <td class="{mc_cls}">{mc}</td>
-              <td>{nm(d['market_cap'])}</td>
+              <td>{nm(d['market_cap'], cur)}</td>
             </tr>"""
         )
     return f"""<div class="overview-table">
@@ -356,6 +367,7 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
         news_analyses = {}
     cards = []
     for d in all_data:
+        cur = d.get("currency_symbol", "$")
         dc, dc_cls = fmt_change(d["day_change"])
         wc, wc_cls = fmt_change(d["week_change"])
         mc, mc_cls = fmt_change(d["month_change"])
@@ -380,13 +392,14 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
         is_up = (d.get("month_change") or 0) >= 0
         chart_b64 = render_chart_png(d["chart_dates"], d["chart_closes"], is_up)
 
+        primary, secondary = _primary_secondary(d)
         cards.append(f"""<div class="stock-card">
   <div class="sc-header">
     <div>
-      <div class="sc-symbol">{d['symbol']}</div>
-      <div class="sc-name">{d['name']} &middot; {d['market']}</div>
+      <div class="sc-symbol">{primary}</div>
+      <div class="sc-name">{secondary} &middot; {d['market']}</div>
     </div>
-    <div class="sc-price">{fmt_price(d['price'])}</div>
+    <div class="sc-price">{fmt_price(d['price'], cur)}</div>
   </div>
   <div class="sc-changes">
     <span>日 <b class="{dc_cls}">{dc}</b></span>
@@ -394,10 +407,10 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
     <span>月 <b class="{mc_cls}">{mc}</b></span>
   </div>
   <div class="sc-info">
-    <span>市值 {nm(d['market_cap'])}</span>
+    <span>市值 {nm(d['market_cap'], cur)}</span>
     <span>PE {d['pe_ratio'] or '-'}</span>
-    <span>52w高 {fmt_price(d['high_52w'])}</span>
-    <span>52w低 {fmt_price(d['low_52w'])}</span>
+    <span>52w高 {fmt_price(d['high_52w'], cur)}</span>
+    <span>52w低 {fmt_price(d['low_52w'], cur)}</span>
     <span>量 {vol_str}</span>
   </div>
   <div class="chart-wrap">

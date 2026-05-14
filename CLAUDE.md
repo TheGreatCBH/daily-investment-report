@@ -28,20 +28,23 @@ python fetch_report.py
 **包结构**：
 
 ```
-fetch_report.py                # 5 行入口，cron 调用此文件
+fetch_report.py                # 5 行入口，launchd 调用此文件
 daily_report/
-  config.py                    # ROOT/paths/load_dotenv/DEEPSEEK_API_KEY/load_config
-  formatting.py                # fmt_change / fmt_price / nm / volume_badge
-  chart.py                     # render_chart_png（matplotlib → base64 PNG）
-  market_data.py               # search_news / fetch_ticker / fetch_macro_news
+  config.py                    # ROOT/paths/DEEPSEEK_API_KEY/load_config
+  __init__.py                  # 包级 load_dotenv(.env)
+  formatting.py                # fmt_change / fmt_price(currency) / nm(currency) / volume_badge
+  chart.py                     # render_chart_png（matplotlib → base64 PNG，浅色仪表盘配色）
+  market_data.py               # fetch_ticker 入口 + yfinance 分支 + 市场路由 + _CURRENCY
+  market_data_cn.py            # akshare 分支：A 股完整 fetch + 港股新闻补强
   news_llm.py                  # 三个 DeepSeek 调用 + _client / _load_prompt / _extract_json
-  render_html.py               # generate_html + _render_*（高度自定义 CSS）
-  notify.py                    # send_notification / send_email（osascript + Mail.app）
+  render_html.py               # generate_html + _render_* + _primary_secondary（A/H 名称为主）
+  notify.py                    # send_notification（macOS osascript）+ send_email（SMTP）
   pipeline.py                  # main() 流程编排
 prompts/
   highlights.md                # process_news_with_llm 的 prompt，占位符 {items_json} {user_symbols}
   stock_analysis.md            # summarize_stock_news 的 prompt，{symbol} {name} {description} {items_json} {items_len}
   translate_titles.md          # translate_news_titles 的 prompt，{titles_list}
+.venv/                         # 项目专用 Python 虚拟环境（gitignored），launchd 直接用 .venv/bin/python3
 ```
 
 **数据流（`pipeline.main()` 顺序执行）**：
@@ -55,6 +58,15 @@ prompts/
 7. `render_chart_png()` 用 matplotlib 把日内走势生成 PNG，再以 base64 内嵌进 HTML（关键：邮件附件场景下不能依赖外链图）。
 8. `generate_html()` + `_render_*` 系列函数拼装最终 HTML。样式高度自定义（深色主题、CSS 变量集中在 `:root`）。
 9. `send_notification()` 在 macOS 上用 `osascript display notification` 发系统通知，非 macOS 静默 skip；`send_email()` 用 `smtplib + email.mime.EmailMessage`，HTML 通过 `add_alternative(..., subtype="html")` 内嵌进正文（不再是附件）。
+
+**多市场数据源路由**：`market_data.fetch_ticker()` 按 yfinance 风格 symbol 后缀分派：
+- `.SS` / `.SZ`（A 股）：行情 + 元数据 + 新闻全部走 akshare（`market_data_cn.fetch_a_share`）。日线/分钟线用 Sina 后端，新闻用东方财富 `stock_news_em`。市值由 `outstanding_share × close` 算出。东方财富的 quote 接口偶发被 IP 限流，所以日线刻意走 Sina，新闻接口（不同 endpoint）通常不受影响。
+- `.HK`（港股）：行情走 yfinance，但新闻被 akshare 的 `stock_news_em(symbol="00700")` 中文新闻**覆盖**掉（yfinance 港股新闻基本是英文稀疏数据，可用性差）。
+- 其它（默认 US）：完整走 yfinance。
+
+`watchlist.json` 里用户填写的 `name` 字段是名称的**主源**（覆盖 yfinance 的 longName），允许把 "Tencent Holdings Limited" 显示为"腾讯控股"。`render_html._primary_secondary` 在标的为 A/H 股（纯数字代号）时把名称作为主显示、代号作为副显示；美股反之。
+
+`fetch_ticker` 返回的 dict 含 `currency_symbol` 字段（US 是 `$`、HK 是 `HK$`、A 股是 `¥`、TSX 是 `C$`），`formatting.fmt_price` 与 `nm` 接受 currency 参数。
 
 **LLM 调用规范**：所有 DeepSeek 调用走 `news_llm._client()` 工厂（`OpenAI(base_url="https://api.deepseek.com")`）+ `deepseek-chat` 模型，温度区分用途（翻译 0.1、解读 0.5、要闻排序 0.3）。响应文本统一过 `_extract_json()` 剥围栏再解析。
 

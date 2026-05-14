@@ -6,18 +6,19 @@ def fmt_change(val):
     return (f"{sign}{val:.2f}%", cls)
 
 
-def fmt_price(val):
+def fmt_price(val, currency="$"):
     if val is None:
         return "-"
-    return f"${val:.2f}"
+    return f"{currency}{val:.2f}"
 
 
-def nm(val):
+def nm(val, currency="$"):
+    """市值缩写：1e12 以上用 T，否则用 B（兼容美元亿/万亿 + A 股人民币千亿/万亿）。"""
     if val is None:
         return "-"
     if val >= 1e12:
-        return f"${val / 1e12:.2f}T"
-    return f"${val / 1e9:.0f}B"
+        return f"{currency}{val / 1e12:.2f}T"
+    return f"{currency}{val / 1e9:.0f}B"
 
 
 def volume_badge(vol, avg):

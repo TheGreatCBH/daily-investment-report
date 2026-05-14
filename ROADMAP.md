@@ -17,7 +17,7 @@
 - [x] `reports/` → `.gitignore` 所有生成产物，保留 `reports/.gitkeep` ✓ 2026-05-14
 - [x] 模块化包名定为 `daily_report/` ✓ 2026-05-14
 - [x] HTML 保持单文件渲染（提取 `render_html.py`），不外置 CSS ✓ 2026-05-14
-- [ ] A/H 股新闻方案：A（yfinance 行情 + akshare 新闻）/ B（全 akshare）/ C（DeepSeek 联网搜索）？（项目 5）
+- [x] A/H 股方案：A+ 混合 —— A 股行情/新闻全 akshare（Sina 日线 + EastMoney 新闻），港股 yfinance 行情 + akshare 新闻 ✓ 2026-05-14
 - [ ] 邮件 SMTP 通道：Gmail / Outlook / QQ-163 / 第三方 API（SendGrid / Resend）？（项目 4）
 
 ---
@@ -73,13 +73,18 @@
 - [x] 端到端验证通过（真实数据 7 标的 OK，邮件渲染正确）✓ 2026-05-14
 - [x] commit `3ef28d2`（SMTP + email-safe CSS）+ `37f951f`（浅色重设计）✓ 2026-05-14
 
-### 5. [ ] A 股 / H 股支持
+### 5. [x] A 股 / H 股支持（A+ 混合方案）✓ 2026-05-14
 
-- [ ] `requirements.txt` 加入 `akshare`
-- [ ] `watchlist.json` 增加 `market` 字段约定（A / H / US）以及对应 yfinance 后缀映射
-- [ ] 行情：A 股 `.SS`/`.SZ`、港股 `.HK`，仍走 yfinance
-- [ ] 新闻：A/H 股接 akshare（接口待选）
-- [ ] LLM prompt 兼容中文新闻输入（其实当前 prompt 已是中文，主要验证）
+- [x] `requirements.txt` 加入 `akshare>=1.18.0` ✓ 2026-05-14
+- [x] 切到项目本地 venv `.venv/`，launchd plist 指向 `.venv/bin/python3` ✓ 2026-05-14
+- [x] 清理 system Python `--user` site-packages 里项目特定的 32 个包，保留 Jupyter/数据科学栈 ✓ 2026-05-14
+- [x] `market_data.fetch_ticker` 增加 dispatcher：按 `.SS/.SZ/.HK/.TO` 后缀路由到 yfinance / akshare ✓ 2026-05-14
+- [x] `market_data_cn.py`：A 股完整 fetch（Sina 日线 + EastMoney 新闻；market_cap 由 outstanding_share × close 计算）+ 港股新闻补强 ✓ 2026-05-14
+- [x] 多币种支持：`currency_symbol` 字段（$/HK$/¥/C$），`fmt_price` 和 `nm` 接受 currency 参数 ✓ 2026-05-14
+- [x] `render_html._primary_secondary`：A/H 股以名称为主、代号为副；美股反之 ✓ 2026-05-14
+- [x] watchlist `name` 字段升级为名称主源（覆盖 yfinance longName，让中文别名生效）✓ 2026-05-14
+- [x] `watchlist.example.json` 增加 600519.SS / 000001.SZ / 0700.HK 示例 ✓ 2026-05-14
+- [x] 端到端 mock 验证通过（真实茅台/平安/腾讯行情 + 中文新闻 + iOS 渲染）✓ 2026-05-14
 
 ### 6. [ ] README
 

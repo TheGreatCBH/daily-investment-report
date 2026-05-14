@@ -3,6 +3,28 @@ from datetime import datetime
 import yfinance as yf
 
 
+def _detect_market(symbol):
+    """根据 yfinance 风格 symbol 推断市场，用于路由数据源 + 决定货币符号。"""
+    if symbol.endswith(".SS"):
+        return "SH"
+    if symbol.endswith(".SZ"):
+        return "SZ"
+    if symbol.endswith(".HK"):
+        return "HK"
+    if symbol.endswith(".TO") or symbol.endswith(".V"):
+        return "TO"
+    return "US"
+
+
+_CURRENCY = {
+    "US": "$",
+    "HK": "HK$",
+    "TO": "C$",
+    "SH": "¥",
+    "SZ": "¥",
+}
+
+
 def search_news(term, max_results=5):
     """用 yfinance Search 搜索关键词新闻"""
     try:
@@ -35,7 +57,36 @@ def search_news(term, max_results=5):
     return items
 
 
-def fetch_ticker(symbol, search_terms=None):
+def fetch_ticker(symbol, search_terms=None, name=None):
+    """统一入口：按 symbol 后缀分派到 yfinance 或 akshare。
+
+    name: watchlist.json 中用户填写的显示名；用于 A 股（akshare 元数据偶发不可用时的兜底）。
+    yfinance 分支会用 ticker info 里的 longName/shortName，name 参数仅当所有自动来源都失败时兜底。
+    """
+    market = _detect_market(symbol)
+
+    if market in ("SH", "SZ"):
+        # A 股：行情 + 新闻全部走 akshare
+        from .market_data_cn import fetch_a_share
+        return fetch_a_share(symbol, search_terms, name=name)
+
+    data = _fetch_yf_ticker(symbol, search_terms, market)
+    # watchlist 用户写的 name 永远优先，覆盖 yfinance 的 longName
+    # （这样用户在 watchlist.json 里写"诺和诺德"/"腾讯控股"等中文别名能生效）
+    if name:
+        data["name"] = name
+
+    if market == "HK":
+        # 港股新闻补强：akshare 中文新闻覆盖比 yfinance 英文新闻好
+        from .market_data_cn import fetch_hk_news_via_ak
+        ak_news = fetch_hk_news_via_ak(symbol)
+        if ak_news:
+            data["news"] = ak_news
+
+    return data
+
+
+def _fetch_yf_ticker(symbol, search_terms, market):
     t = yf.Ticker(symbol)
     info = t.info
 
@@ -105,6 +156,7 @@ def fetch_ticker(symbol, search_terms=None):
         "symbol": symbol,
         "name": info.get("longName") or info.get("shortName", symbol),
         "market": info.get("exchange", "-"),
+        "currency_symbol": _CURRENCY.get(market, "$"),
         "price": current,
         "prev_close": prev_close,
         "day_change": day_change,
