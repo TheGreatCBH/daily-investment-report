@@ -85,6 +85,7 @@
 - [x] watchlist `name` 字段升级为名称主源（覆盖 yfinance longName，让中文别名生效）✓ 2026-05-14
 - [x] `watchlist.example.json` 增加 600519.SS / 000001.SZ / 0700.HK 示例 ✓ 2026-05-14
 - [x] 端到端 mock 验证通过（真实茅台/平安/腾讯行情 + 中文新闻 + iOS 渲染）✓ 2026-05-14
+- [x] commit `d87b97c`（+282 -33，9 文件）✓ 2026-05-14
 
 ### 6. [ ] README
 
