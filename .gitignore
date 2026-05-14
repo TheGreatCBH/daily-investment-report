@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Editor / R history
+.Rhistory
+
+# Project-local caches
+.chartjs.cache
+
+# Secrets / personal config (use .env.example, watchlist.example.json as templates)
+.env
+watchlist.json
+
+# Claude Code local settings
+.claude/
+
+# Generated reports (keep dir, ignore contents)
+reports/*.html
+reports/*.md
+reports/*.log
+!reports/.gitkeep

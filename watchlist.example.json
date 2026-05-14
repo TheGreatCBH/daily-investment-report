@@ -1,0 +1,35 @@
+{
+  "email": {
+    "address": "your_email@example.com"
+  },
+  "watchlist": [
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA",
+      "market": "NASDAQ",
+      "type": "stock"
+    },
+    {
+      "symbol": "AAPL",
+      "name": "Apple",
+      "market": "NASDAQ",
+      "type": "stock"
+    },
+    {
+      "symbol": "IAU",
+      "name": "iShares Gold Trust",
+      "market": "NYSE ARCA",
+      "type": "etf",
+      "search_terms": ["gold price", "gold market"],
+      "description": "追踪黄金价格的 ETF，关于黄金价格、黄金矿业公司、黄金市场的新闻都与其相关"
+    },
+    {
+      "symbol": "ZEB.TO",
+      "name": "BMO Equal Weight Banks Index ETF",
+      "market": "TSX",
+      "type": "etf",
+      "search_terms": ["Canadian banks", "TSX banks"],
+      "description": "追踪加拿大六大银行的等权重指数 ETF，关于加拿大银行、金融机构、加拿大金融行业的新闻都与其相关"
+    }
+  ]
+}
