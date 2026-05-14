@@ -7,17 +7,42 @@ from email.message import EmailMessage
 
 
 def send_notification(title, message):
-    """macOS 系统通知；非 macOS 平台静默跳过。"""
-    if sys.platform != "darwin":
-        return
+    """跨平台系统通知。失败/不支持的平台静默 skip（不影响主流程）。
+
+    - macOS：osascript display notification
+    - Linux：notify-send（需要 libnotify-bin / notify-osd 已安装）
+    - Windows：PowerShell BurntToast-free toast（Win10+）
+    - 其它：静默 no-op
+    """
+    p = sys.platform
     try:
-        subprocess.run([
-            "osascript", "-e",
-            f'display notification "{message}" with title "{title}" sound name "Glass"',
-        ], check=True)
+        if p == "darwin":
+            subprocess.run(
+                ["osascript", "-e",
+                 f'display notification "{message}" with title "{title}" sound name "Glass"'],
+                check=True,
+            )
+        elif p.startswith("linux"):
+            subprocess.run(["notify-send", title, message], check=True)
+        elif p == "win32":
+            ps = (
+                "$ErrorActionPreference='SilentlyContinue';"
+                "[Windows.UI.Notifications.ToastNotificationManager,"
+                "Windows.UI.Notifications,ContentType=WindowsRuntime]>$null;"
+                "$x=[Windows.UI.Notifications.ToastNotificationManager]"
+                "::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02);"
+                f"$x.GetElementsByTagName('text')[0].AppendChild($x.CreateTextNode(\"{title}\"))>$null;"
+                f"$x.GetElementsByTagName('text')[1].AppendChild($x.CreateTextNode(\"{message}\"))>$null;"
+                "$t=[Windows.UI.Notifications.ToastNotification]::new($x);"
+                "[Windows.UI.Notifications.ToastNotificationManager]"
+                "::CreateToastNotifier('DailyInvestmentReport').Show($t);"
+            )
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
+        else:
+            return  # 未支持的平台，silent no-op
         print("  通知已发送")
     except Exception as e:
-        print(f"  [WARN] 通知发送失败: {e}")
+        print(f"  [WARN] 通知发送失败（{p}）: {e}")
 
 
 def send_email(to, subject, html_content):
@@ -40,7 +65,7 @@ def send_email(to, subject, html_content):
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = to
-    msg.set_content("您的邮件客户端不支持 HTML 显示，请在支持 HTML 的客户端中打开。")
+    msg.set_content("Your email client does not support HTML. Open in an HTML-capable client.")
     msg.add_alternative(html_content, subtype="html")
 
     try:

@@ -47,9 +47,14 @@ SMTP_PORT=587
 SMTP_USER=you@icloud.com
 SMTP_PASS=xxxx-xxxx-xxxx-xxxx
 EMAIL_FROM=you@icloud.com
+
+# Optional: report language. Default zh-CN; set to en-US for English output.
+# REPORT_LOCALE=en-US
 ```
 
 For iCloud, the `From:` address must equal your iCloud account or a verified alias.
+
+`REPORT_LOCALE` switches the entire output: HTML labels, email subject, OS notification text, and the language of LLM-generated summaries (English prompts live under `prompts/en/`).
 
 Edit `watchlist.json` with your holdings. Symbol convention follows yfinance:
 
@@ -125,7 +130,7 @@ See [CLAUDE.md](CLAUDE.md) for the deeper architectural conventions (prompt temp
 
 ## Limitations
 
-- **macOS-only system notifications.** Email and report generation are cross-platform; the `osascript`-based notification silently no-ops elsewhere.
+- **Cross-platform notifications are best-effort.** macOS uses `osascript`, Linux uses `notify-send` (requires `libnotify-bin`), Windows uses a PowerShell-based toast on Win10+. Other platforms silently skip. Email is fully cross-platform via SMTP.
 - **No Microsoft personal Outlook outbound.** They moved to OAuth2-only.
 - **akshare EastMoney quote endpoints rate-limit on heavy use.** We use Sina for A-share daily data as the primary source; news endpoints have been stable.
 - **HTML email size ~150–180KB with 7 stocks.** Most clients render fine; Gmail web clips emails over ~102KB and adds a "View entire message" link.

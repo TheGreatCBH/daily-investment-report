@@ -10,6 +10,8 @@ A 股（`.SS` / `.SZ`）：
 """
 import akshare as ak
 
+from .i18n import t
+
 
 def _code(symbol):
     """600519.SS -> 600519；0700.HK -> 0700"""
@@ -98,7 +100,7 @@ def fetch_a_share(symbol, search_terms=None, name=None):
     return {
         "symbol": symbol,
         "name": resolved_name,
-        "market": "上交所" if symbol.endswith(".SS") else "深交所",
+        "market": t("market_sh") if symbol.endswith(".SS") else t("market_sz"),
         "currency_symbol": "¥",
         "price": current,
         "prev_close": prev_close,

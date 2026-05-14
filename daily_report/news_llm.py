@@ -3,6 +3,7 @@ import json
 from openai import OpenAI
 
 from .config import DEEPSEEK_API_KEY, PROMPTS_DIR
+from .i18n import LOCALE
 
 
 def _client():
@@ -10,6 +11,11 @@ def _client():
 
 
 def _load_prompt(name):
+    """en-US locale 优先从 prompts/en/ 加载；缺失则回退到 prompts/（默认中文）。"""
+    if LOCALE == "en-US":
+        en_path = PROMPTS_DIR / "en" / name
+        if en_path.exists():
+            return en_path.read_text(encoding="utf-8")
     return (PROMPTS_DIR / name).read_text(encoding="utf-8")
 
 

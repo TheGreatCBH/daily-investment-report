@@ -47,9 +47,14 @@ SMTP_PORT=587
 SMTP_USER=you@icloud.com
 SMTP_PASS=xxxx-xxxx-xxxx-xxxx
 EMAIL_FROM=you@icloud.com
+
+# 可选：报告语言，默认 zh-CN；设为 en-US 切换到英文输出
+# REPORT_LOCALE=en-US
 ```
 
 对 iCloud：`From:` 地址必须等于 iCloud 主邮箱或在 iCloud 后台验证过的别名。
+
+`REPORT_LOCALE` 同时切换：HTML 文案、邮件主题、系统通知文案、以及 LLM 生成内容的语言（英文 prompts 在 `prompts/en/` 下）。
 
 编辑 `watchlist.json`。symbol 沿用 yfinance 风格：
 
@@ -125,7 +130,7 @@ Linux / cron 版本：
 
 ## 已知限制
 
-- **系统通知仅支持 macOS**。邮件和报告生成是跨平台的，`osascript` 通知在其它平台静默 no-op
+- **系统通知按平台分派 best-effort**：macOS 用 `osascript`、Linux 用 `notify-send`（需要 `libnotify-bin`）、Windows 用 PowerShell toast（Win10+），其他平台静默 skip。邮件（SMTP）全平台支持
 - **微软个人 Outlook 不能作为发件方**（OAuth2-only）
 - **akshare 东方财富 quote 接口在高频访问时会被限流**，所以 A 股日线主路径切到了 Sina；新闻接口（不同 endpoint）目前稳定
 - **HTML 邮件 7 只标的下约 150-180KB**。多数客户端正常渲染；Gmail Web 端 >102KB 会截断并显示"查看完整邮件"链接

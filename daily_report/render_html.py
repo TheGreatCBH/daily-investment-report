@@ -2,6 +2,7 @@ from datetime import datetime
 
 from .chart import render_chart_png
 from .formatting import fmt_change, fmt_price, nm, volume_badge
+from .i18n import LOCALE, t
 
 
 def generate_html(all_data, llm_result, news_translations=None, news_analyses=None):
@@ -17,11 +18,11 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
     all_highlights = sorted(macro_highlights + stock_highlights, key=lambda x: x.get("rank", 99))
 
     return f"""<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="{LOCALE}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>每日投资简报 — {today}</title>
+<title>{t("title")} — {today}</title>
 <style>
   * {{ margin:0; padding:0; box-sizing:border-box; }}
 
@@ -281,23 +282,23 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
 <div class="container">
 
 <div class="header">
-  <h1>每日投资简报</h1>
+  <h1>{t("title")}</h1>
   <div class="date">{today}</div>
   <div class="divider"></div>
 </div>
 
-<div class="section-title">今日要闻</div>
+<div class="section-title">{t("section_highlights")}</div>
 
 {_render_highlights(all_highlights)}
 
-<div class="section-title">持仓概览</div>
+<div class="section-title">{t("section_overview")}</div>
 
 {_render_overview(all_data)}
 
 {_render_stock_cards(all_data, news_translations, news_analyses)}
 
 <div class="footer">
-  {gen_time} &middot; Yahoo Finance &middot; DeepSeek AI 摘要
+  {gen_time} &middot; {t("footer_credit")}
 </div>
 
 </div>
@@ -308,13 +309,13 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
 
 def _render_highlights(highlights):
     if not highlights:
-        return '<div class="highlight-card"><span style="color:#9298a3">暂无重要新闻</span></div>'
+        return f'<div class="highlight-card"><span style="color:#9298a3">{t("no_highlights")}</span></div>'
     items = []
     for h in highlights:
         rank = h.get("rank", 99)
         cls = f"rank-{min(rank, 2)}"
         is_macro = "macro" in h.get("type", "") or h.get("type") == "macro" or "symbol" not in h
-        tag_html = '<span class="hl-tag hl-tag-macro">宏观</span>' if is_macro else f'<span class="hl-tag hl-tag-stock">{h.get("symbol", "")}</span>'
+        tag_html = f'<span class="hl-tag hl-tag-macro">{t("tag_macro")}</span>' if is_macro else f'<span class="hl-tag hl-tag-stock">{h.get("symbol", "")}</span>'
         items.append(f"""<div class="highlight-card {cls}">
   <div class="hl-title">{tag_html}{h.get("title_cn", h.get("title", "-"))}</div>
   <div class="hl-summary">{h.get("summary_cn", "")}</div>
@@ -353,7 +354,7 @@ def _render_overview(all_data):
     return f"""<div class="overview-table">
     <table>
       <thead><tr>
-        <th>代码</th><th>现价</th><th>日涨跌</th><th>周涨跌</th><th>月涨跌</th><th>市值</th>
+        <th>{t("th_symbol")}</th><th>{t("th_price")}</th><th>{t("th_day")}</th><th>{t("th_week")}</th><th>{t("th_month")}</th><th>{t("th_market_cap")}</th>
       </tr></thead>
       <tbody>{"".join(rows)}</tbody>
     </table>
@@ -388,7 +389,7 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
                     items.append(f'<div class="sc-news-item"><div class="sc-news-title">{title}<span class="sc-news-src">{n["publisher"]}</span></div></div>')
             news_html = '<div class="sc-news">' + "".join(items) + "</div>"
 
-        chart_hint = "日内走势" if d["chart_type"] == "1d" else "近期走势"
+        chart_hint = t("chart_intraday") if d["chart_type"] == "1d" else t("chart_recent")
         is_up = (d.get("month_change") or 0) >= 0
         chart_b64 = render_chart_png(d["chart_dates"], d["chart_closes"], is_up)
 
@@ -402,16 +403,16 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
     <div class="sc-price">{fmt_price(d['price'], cur)}</div>
   </div>
   <div class="sc-changes">
-    <span>日 <b class="{dc_cls}">{dc}</b></span>
-    <span>周 <b class="{wc_cls}">{wc}</b></span>
-    <span>月 <b class="{mc_cls}">{mc}</b></span>
+    <span>{t("label_day")} <b class="{dc_cls}">{dc}</b></span>
+    <span>{t("label_week")} <b class="{wc_cls}">{wc}</b></span>
+    <span>{t("label_month")} <b class="{mc_cls}">{mc}</b></span>
   </div>
   <div class="sc-info">
-    <span>市值 {nm(d['market_cap'], cur)}</span>
-    <span>PE {d['pe_ratio'] or '-'}</span>
-    <span>52w高 {fmt_price(d['high_52w'], cur)}</span>
-    <span>52w低 {fmt_price(d['low_52w'], cur)}</span>
-    <span>量 {vol_str}</span>
+    <span>{t("label_market_cap")} {nm(d['market_cap'], cur)}</span>
+    <span>{t("label_pe")} {d['pe_ratio'] or '-'}</span>
+    <span>{t("label_52w_high")} {fmt_price(d['high_52w'], cur)}</span>
+    <span>{t("label_52w_low")} {fmt_price(d['low_52w'], cur)}</span>
+    <span>{t("label_volume")} {vol_str}</span>
   </div>
   <div class="chart-wrap">
     <img src="data:image/png;base64,{chart_b64}" alt="{d['symbol']}走势图" />

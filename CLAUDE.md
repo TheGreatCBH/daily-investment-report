@@ -33,17 +33,19 @@ daily_report/
   config.py                    # ROOT/paths/DEEPSEEK_API_KEY/load_config
   __init__.py                  # 包级 load_dotenv(.env)
   formatting.py                # fmt_change / fmt_price(currency) / nm(currency) / volume_badge
+  i18n.py                      # REPORT_LOCALE 环境变量 + _STRINGS 字典 + t() helper
   chart.py                     # render_chart_png（matplotlib → base64 PNG，浅色仪表盘配色）
   market_data.py               # fetch_ticker 入口 + yfinance 分支 + 市场路由 + _CURRENCY
   market_data_cn.py            # akshare 分支：A 股完整 fetch + 港股新闻补强
   news_llm.py                  # 三个 DeepSeek 调用 + _client / _load_prompt / _extract_json
   render_html.py               # generate_html + _render_* + _primary_secondary（A/H 名称为主）
-  notify.py                    # send_notification（macOS osascript）+ send_email（SMTP）
+  notify.py                    # send_notification 跨平台（macOS/Linux/Windows，其余 no-op）+ send_email（SMTP）
   pipeline.py                  # main() 流程编排
 prompts/
   highlights.md                # process_news_with_llm 的 prompt，占位符 {items_json} {user_symbols}
   stock_analysis.md            # summarize_stock_news 的 prompt，{symbol} {name} {description} {items_json} {items_len}
   translate_titles.md          # translate_news_titles 的 prompt，{titles_list}
+  en/                          # 英文 prompts 镜像，REPORT_LOCALE=en-US 时加载
 .venv/                         # 项目专用 Python 虚拟环境（gitignored），launchd 直接用 .venv/bin/python3
 examples/
   com.investment.daily-report.plist  # launchd 模板（脱敏，含 REPO_PATH 占位符）
@@ -81,9 +83,11 @@ LICENSE                        # MIT
 
 **Env 加载**：`.env` 在 `daily_report/__init__.py` 包导入时一次性加载，子模块任意 import 顺序都读得到环境变量。
 
+**i18n / 多语言**：通过环境变量 `REPORT_LOCALE` 切换报告语言，默认 `zh-CN`，支持 `en-US`。所有面向用户可见的 HTML/邮件/通知字面量集中在 `daily_report/i18n.py` 的 `_STRINGS` 字典里，代码通过 `t("key", **kwargs)` 取值。LLM prompts 走文件级 i18n：`prompts/en/` 镜像若存在则在 en-US 下加载，否则回退到 `prompts/`（默认中文）。**注意**：`i18n.LOCALE` 在模块 import 时定型，运行中改环境变量不生效，需要重启进程。
+
 **Email-safe CSS 约束**：HTML 通过邮件发送时由 Outlook for iOS / Apple Mail 渲染，**禁止使用 CSS 变量**（`var(--xxx)` 不被解析），所有颜色必须以字面 hex / rgba 值出现在 `<style>` 块中。`<details>/<summary>` 在邮件客户端里无法折叠，相当于普通 div。`flex` 的 `gap` 属性在 iOS Outlook 不支持，多个 inline 元素之间的间距用 `display: inline-block; margin-right: Npx` 实现。
 
-**平台依赖**：通知（`osascript`）仅在 macOS 可用；邮件发送已跨平台（SMTP）。`matplotlib.use("Agg")` 是显式声明用无头后端，不要改。
+**平台依赖**：邮件发送（SMTP）跨平台。通知（`send_notification`）分派：macOS 走 `osascript`、Linux 走 `notify-send`、Windows 走 PowerShell toast（Win10+），其余平台 silent no-op。`matplotlib.use("Agg")` 是显式声明用无头后端，不要改。
 
 ## 修改提示
 

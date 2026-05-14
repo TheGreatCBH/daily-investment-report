@@ -1,3 +1,6 @@
+from .i18n import t
+
+
 def fmt_change(val):
     if val is None:
         return ("-", "")
@@ -26,7 +29,7 @@ def volume_badge(vol, avg):
         return ("-", "")
     r = vol / avg
     if r >= 1.5:
-        return (f"{vol:,.0f} 放量 {r:.1f}x", "hot")
+        return (f"{vol:,.0f} {t('high_volume')} {r:.1f}x", "hot")
     elif r <= 0.5:
-        return (f"{vol:,.0f} 缩量 {r:.1f}x", "cold")
+        return (f"{vol:,.0f} {t('low_volume')} {r:.1f}x", "cold")
     return (f"{vol:,.0f}", "")

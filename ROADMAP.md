@@ -98,9 +98,12 @@
 - [x] commit `3c257d0`（+366 -8，6 文件）✓ 2026-05-14
 - [x] **push 到 GitHub public repo**：https://github.com/TheGreatCBH/daily-investment-report ✓ 2026-05-14
 
-### 7. [ ] （可选 / 低优先）Windows + 英文 i18n
+### 7. [x] Windows + 英文 i18n ✓ 2026-05-15
 
-- [ ] 通知跨平台化（`plyer` 或条件分支）
-- [ ] HTML 文案抽 i18n 字典（zh-CN / en-US）
-- [ ] `prompts/` 增加 `en/` 镜像
-- [ ] README 双语
+- [x] 通知跨平台化（无新增依赖，按 `sys.platform` 条件分派：macOS osascript / Linux notify-send / Windows PowerShell toast / 其他 no-op）✓ 2026-05-15
+- [x] HTML 文案 i18n：`daily_report/i18n.py` 集中 `_STRINGS` + `t()` helper，环境变量 `REPORT_LOCALE` 切换（默认 `zh-CN`，支持 `en-US`）✓ 2026-05-15
+- [x] `prompts/` 增加 `en/` 镜像（highlights / stock_analysis / translate_titles），news_llm 按 locale 加载 ✓ 2026-05-15
+- [x] formatting / market_data_cn / pipeline / render_html / notify 所有用户可见字面量替换为 `t()` 调用 ✓ 2026-05-15
+- [x] README 双语已在项目 6 完成 ✓ 2026-05-14
+- [x] CLAUDE.md / README / `.env.example` 文档化 `REPORT_LOCALE` ✓ 2026-05-15
+- [x] 烟测验证：zh-CN 默认 + en-US 切换两个 locale 都正确渲染，无字符串泄漏 ✓ 2026-05-15

@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 
 from .config import REPORTS_DIR, load_config
+from .i18n import t
 from .market_data import fetch_macro_news, fetch_ticker
 from .news_llm import process_news_with_llm, summarize_stock_news, translate_news_titles
 from .notify import send_email, send_notification
@@ -74,10 +75,10 @@ def main():
 
     print(f"\n报告已生成: {path}")
 
-    send_notification("每日投资简报", f"{today} 报告已生成")
+    send_notification(t("notification_title"), t("notification_message", date=today))
 
     to = email_config.get("address", "")
     if to:
-        send_email(to, f"每日投资简报 — {today}", html)
+        send_email(to, f"{t('email_subject')} — {today}", html)
 
     return str(path)
