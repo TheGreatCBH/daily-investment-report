@@ -107,3 +107,4 @@
 - [x] README 双语已在项目 6 完成 ✓ 2026-05-14
 - [x] CLAUDE.md / README / `.env.example` 文档化 `REPORT_LOCALE` ✓ 2026-05-15
 - [x] 烟测验证：zh-CN 默认 + en-US 切换两个 locale 都正确渲染，无字符串泄漏 ✓ 2026-05-15
+- [x] commit `3a19ae8`（13 文件，含 3 个英文 prompts）✓ 2026-05-15
