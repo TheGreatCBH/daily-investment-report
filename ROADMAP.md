@@ -71,6 +71,7 @@
 - [x] 修复 iOS Outlook 不支持 `flex gap`：`sc-info` / `sc-changes` 改用 `display: inline-block; margin-right` ✓ 2026-05-14
 - [x] `<details>/<summary>` 替换为普通 div（邮件客户端反正不支持折叠）✓ 2026-05-14
 - [x] 端到端验证通过（真实数据 7 标的 OK，邮件渲染正确）✓ 2026-05-14
+- [x] commit `3ef28d2`（SMTP + email-safe CSS）+ `37f951f`（浅色重设计）✓ 2026-05-14
 
 ### 5. [ ] A 股 / H 股支持
 
