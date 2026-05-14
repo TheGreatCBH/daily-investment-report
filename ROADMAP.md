@@ -87,14 +87,14 @@
 - [x] 端到端 mock 验证通过（真实茅台/平安/腾讯行情 + 中文新闻 + iOS 渲染）✓ 2026-05-14
 - [x] commit `d87b97c`（+282 -33，9 文件）✓ 2026-05-14
 
-### 6. [ ] README
+### 6. [x] README ✓ 2026-05-14
 
-- [ ] 项目介绍 + 报告效果截图
-- [ ] 安装 / 配置 / 运行
-- [ ] 自定义 watchlist 说明
-- [ ] 邮件 SMTP 配置说明（Gmail / Outlook 应用密码教程链接）
-- [ ] cron 调度示例
-- [ ] 开源协议（MIT / Apache 2.0 选一）
+- [x] 英文主版 `README.md`：feature 列表、依赖、安装、配置（`.env` + `watchlist.json` 多市场示例）、运行、launchd 调度示例、架构表、已知限制、协议、致谢 ✓ 2026-05-14
+- [x] 中文镜像 `README.zh-CN.md` ✓ 2026-05-14
+- [x] `LICENSE`：MIT，2026 TheGreatCBH ✓ 2026-05-14
+- [x] `examples/com.investment.daily-report.plist`：脱敏 launchd 模板（REPO_PATH 占位）✓ 2026-05-14
+- [x] Outlook personal OAuth2-only 的坑、Microsoft 不可用、iCloud 推荐路径写进 README ✓ 2026-05-14
+- [ ] 报告效果截图（暂不放，后续随时补）
 
 ### 7. [ ] （可选 / 低优先）Windows + 英文 i18n
 

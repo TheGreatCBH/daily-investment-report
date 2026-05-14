@@ -45,6 +45,11 @@ prompts/
   stock_analysis.md            # summarize_stock_news 的 prompt，{symbol} {name} {description} {items_json} {items_len}
   translate_titles.md          # translate_news_titles 的 prompt，{titles_list}
 .venv/                         # 项目专用 Python 虚拟环境（gitignored），launchd 直接用 .venv/bin/python3
+examples/
+  com.investment.daily-report.plist  # launchd 模板（脱敏，含 REPO_PATH 占位符）
+README.md                      # public README（英文主版）
+README.zh-CN.md                # 中文镜像
+LICENSE                        # MIT
 ```
 
 **数据流（`pipeline.main()` 顺序执行）**：

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Example launchd agent for macOS that runs fetch_report.py on weekday
+  mornings at 09:30. Before installing, replace every occurrence of
+  REPO_PATH with the absolute path to your cloned repo
+  (e.g. /Users/yourname/daily-investment-report) and copy this file to
+  ~/Library/LaunchAgents/, then `launchctl load <path>`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.investment.daily-report</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>REPO_PATH/.venv/bin/python3</string>
+        <string>REPO_PATH/fetch_report.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>REPO_PATH</string>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>1</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>2</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>3</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>4</integer></dict>
+        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>5</integer></dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>REPO_PATH/reports/cron.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>REPO_PATH/reports/cron_error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>LANG</key>
+        <string>zh_CN.UTF-8</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
