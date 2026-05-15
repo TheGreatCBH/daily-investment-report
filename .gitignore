@@ -29,3 +29,6 @@ reports/*.html
 reports/*.md
 reports/*.log
 !reports/.gitkeep
+
+# Session logs / scratch notes (private)
+notes/
