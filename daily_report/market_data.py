@@ -90,21 +90,23 @@ def _fetch_yf_ticker(symbol, search_terms, market):
     t = yf.Ticker(symbol)
     info = t.info
 
-    df_month = t.history(period="1mo")
+    # df_1mo: ~22 行交易日数据（用于月/周变化；5 交易日 ≈ 1 自然周，22 交易日 ≈ 1 自然月）
+    df_1mo = t.history(period="1mo")
     df_1d = t.history(period="1d", interval="5m")
     if df_1d.empty:
         df_1d = t.history(period="5d", interval="30m")
         if df_1d.empty:
-            df_1d = df_month
+            df_1d = df_1mo
 
     prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose")
     current = info.get("currentPrice") or info.get("regularMarketPrice")
     day_change = ((current - prev_close) / prev_close * 100) if current and prev_close else None
 
-    if len(df_month) >= 2:
-        week_close = df_month.iloc[-6]["Close"] if len(df_month) >= 6 else df_month.iloc[0]["Close"]
-        week_change = (df_month.iloc[-1]["Close"] - week_close) / week_close * 100
-        month_change = (df_month.iloc[-1]["Close"] - df_month.iloc[0]["Close"]) / df_month.iloc[0]["Close"] * 100
+    if len(df_1mo) >= 2:
+        # 5 交易日前 ≈ 1 周前；iloc[-6] 多取 1 行作为缓冲
+        week_close = df_1mo.iloc[-6]["Close"] if len(df_1mo) >= 6 else df_1mo.iloc[0]["Close"]
+        week_change = (df_1mo.iloc[-1]["Close"] - week_close) / week_close * 100
+        month_change = (df_1mo.iloc[-1]["Close"] - df_1mo.iloc[0]["Close"]) / df_1mo.iloc[0]["Close"] * 100
     else:
         week_change = month_change = None
 

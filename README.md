@@ -19,7 +19,7 @@ A personal morning brief generator. Pulls watchlist quotes from Yahoo Finance an
   - **iCloud** (recommended): use an [app-specific password](https://appleid.apple.com)
   - **Gmail**: enable 2FA and create an app password
   - **Microsoft personal Outlook accounts no longer work** — Microsoft moved them to OAuth2-only auth, and basic SMTP (including app passwords) is server-side blocked
-- A [DeepSeek API key](https://platform.deepseek.com) (the LLM is reached via the `openai` SDK with a custom `base_url`; any OpenAI-compatible endpoint also works with a one-line change in `daily_report/news_llm.py`)
+- An API key for any **OpenAI-compatible LLM**: [DeepSeek](https://platform.deepseek.com) (default, cheap), [OpenAI](https://platform.openai.com), [Groq](https://console.groq.com), or a local [Ollama](https://ollama.com) instance — configured via `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` in `.env`
 
 ## Install
 
@@ -40,7 +40,10 @@ cp watchlist.example.json watchlist.json
 Edit `.env`:
 
 ```
-DEEPSEEK_API_KEY=sk-...
+# LLM — any OpenAI-compatible endpoint
+LLM_API_KEY=sk-...
+LLM_BASE_URL=https://api.deepseek.com   # leave empty for OpenAI; omit to keep DeepSeek default
+LLM_MODEL=deepseek-chat                 # e.g. gpt-4o, llama-3.3-70b-versatile, qwen2.5:7b
 
 SMTP_HOST=smtp.mail.me.com
 SMTP_PORT=587

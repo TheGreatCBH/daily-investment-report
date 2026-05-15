@@ -108,3 +108,20 @@
 - [x] CLAUDE.md / README / `.env.example` 文档化 `REPORT_LOCALE` ✓ 2026-05-15
 - [x] 烟测验证：zh-CN 默认 + en-US 切换两个 locale 都正确渲染，无字符串泄漏 ✓ 2026-05-15
 - [x] commit `3a19ae8`（13 文件，含 3 个英文 prompts）✓ 2026-05-15
+
+---
+
+## Code Review 修复（2026-05-15）
+
+### 8. [~] Code review important 修复
+
+- [x] `tests/test_basics.py`：18 个最小单元测试（`_detect_market` / `fmt_change` / `nm` / `_primary_secondary`，无网络依赖）✓ 2026-05-15
+- [x] `config.py` KeyError → RuntimeError + 友好提示（含 .env 配置步骤）✓ 2026-05-15
+- [x] `notify.py` AppleScript `_esc_as()` + PowerShell `_esc_ps()` 转义，消除注入形态 ✓ 2026-05-15
+- [x] `news_llm._extract_json`：先 try 直接 `json.loads`，失败再剥围栏，提升容错 ✓ 2026-05-15
+- [x] `requirements.txt` `>=` → `~=` 锁主版本 + 加入 `pytest~=8.0` ✓ 2026-05-15
+- [x] 网络调用加 retry / backoff（`_retry` 手撸线性退避，pipeline + news_llm 各 3 次重试）✓ 2026-05-15
+- [x] `pipeline.py` / `notify.py` / `news_llm.py` `print` → `logging`（`basicConfig` 在 `pipeline.main()` 里初始化）✓ 2026-05-15
+- [x] `market_data.py` `df_month` 重命名 → `df_1mo` + 交易日近似注释；`market_data_cn.py` 252/22/6 同步注释 ✓ 2026-05-15
+- [x] A 股 PE：`pe_ratio` 为 None 时 HTML 不渲染该行（不再显示 "PE -"）✓ 2026-05-15
+- [ ] README 加报告效果截图

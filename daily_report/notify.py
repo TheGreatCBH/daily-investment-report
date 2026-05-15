@@ -1,9 +1,22 @@
+import logging
 import os
 import smtplib
 import ssl
 import subprocess
 import sys
 from email.message import EmailMessage
+
+logger = logging.getLogger(__name__)
+
+
+def _esc_as(s):
+    """AppleScript 字符串转义：反斜杠、双引号、换行符。"""
+    return str(s).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("\r", " ")
+
+
+def _esc_ps(s):
+    """PowerShell 双引号字符串转义：双引号 → 连续两个双引号。"""
+    return str(s).replace('"', '""')
 
 
 def send_notification(title, message):
@@ -17,22 +30,26 @@ def send_notification(title, message):
     p = sys.platform
     try:
         if p == "darwin":
+            t_safe = _esc_as(title)
+            m_safe = _esc_as(message)
             subprocess.run(
                 ["osascript", "-e",
-                 f'display notification "{message}" with title "{title}" sound name "Glass"'],
+                 f'display notification "{m_safe}" with title "{t_safe}" sound name "Glass"'],
                 check=True,
             )
         elif p.startswith("linux"):
             subprocess.run(["notify-send", title, message], check=True)
         elif p == "win32":
+            t_safe = _esc_ps(title)
+            m_safe = _esc_ps(message)
             ps = (
                 "$ErrorActionPreference='SilentlyContinue';"
                 "[Windows.UI.Notifications.ToastNotificationManager,"
                 "Windows.UI.Notifications,ContentType=WindowsRuntime]>$null;"
                 "$x=[Windows.UI.Notifications.ToastNotificationManager]"
                 "::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02);"
-                f"$x.GetElementsByTagName('text')[0].AppendChild($x.CreateTextNode(\"{title}\"))>$null;"
-                f"$x.GetElementsByTagName('text')[1].AppendChild($x.CreateTextNode(\"{message}\"))>$null;"
+                f'$x.GetElementsByTagName(\'text\')[0].AppendChild($x.CreateTextNode("{t_safe}"))>$null;'
+                f'$x.GetElementsByTagName(\'text\')[1].AppendChild($x.CreateTextNode("{m_safe}"))>$null;'
                 "$t=[Windows.UI.Notifications.ToastNotification]::new($x);"
                 "[Windows.UI.Notifications.ToastNotificationManager]"
                 "::CreateToastNotifier('DailyInvestmentReport').Show($t);"
@@ -40,9 +57,9 @@ def send_notification(title, message):
             subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
         else:
             return  # 未支持的平台，silent no-op
-        print("  通知已发送")
+        logger.info("通知已发送")
     except Exception as e:
-        print(f"  [WARN] 通知发送失败（{p}）: {e}")
+        logger.warning("通知发送失败（%s）: %s", p, e)
 
 
 def send_email(to, subject, html_content):
@@ -58,7 +75,7 @@ def send_email(to, subject, html_content):
     sender = os.environ.get("EMAIL_FROM") or user
 
     if not (host and user and password):
-        print("  [WARN] SMTP 未配置（缺少 SMTP_HOST / SMTP_USER / SMTP_PASS），跳过发邮件")
+        logger.warning("SMTP 未配置（缺少 SMTP_HOST / SMTP_USER / SMTP_PASS），跳过发邮件")
         return
 
     msg = EmailMessage()
@@ -74,6 +91,6 @@ def send_email(to, subject, html_content):
             s.starttls(context=ctx)
             s.login(user, password)
             s.send_message(msg)
-        print(f"  邮件已发送至 {to}")
+        logger.info("邮件已发送至 %s", to)
     except Exception as e:
-        print(f"  [WARN] 邮件发送失败: {e}")
+        logger.warning("邮件发送失败: %s", e)

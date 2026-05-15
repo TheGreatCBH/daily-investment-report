@@ -39,7 +39,7 @@ def fetch_a_share(symbol, search_terms=None, name=None):
     df_daily = ak.stock_zh_a_daily(symbol=sina_sym, adjust="qfq")
     if df_daily.empty:
         raise ValueError(f"akshare Sina returned no daily data for {sina_sym}")
-    df_year = df_daily.tail(252).reset_index(drop=True)
+    df_year = df_daily.tail(252).reset_index(drop=True)  # 252 交易日 ≈ 1 年
 
     # 名称：watchlist 用户填写 > akshare 个股信息（best-effort）> 代码
     resolved_name = name
@@ -77,6 +77,7 @@ def fetch_a_share(symbol, search_terms=None, name=None):
     prev_close = float(closes.iloc[-2]) if len(closes) >= 2 else None
     day_change = (current - prev_close) / prev_close * 100 if prev_close else None
 
+    # 5 交易日 ≈ 1 自然周（iloc[-6] 多取 1 行作缓冲），22 交易日 ≈ 1 自然月
     week_close = float(closes.iloc[-6] if len(closes) >= 6 else closes.iloc[0])
     week_change = (current - week_close) / week_close * 100
 

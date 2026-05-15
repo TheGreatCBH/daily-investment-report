@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-每日投资简报生成器：从 Yahoo Finance 拉取持仓行情与新闻，调用 DeepSeek API 完成中文翻译/解读/重要性排序，渲染成 HTML 报告，通过 SMTP 发送邮件（HTML inline 进正文），并在 macOS 上发系统通知。
+每日投资简报生成器：从 Yahoo Finance 拉取持仓行情与新闻，调用 LLM（DeepSeek / OpenAI / Groq / Ollama 等 OpenAI 兼容接口）完成中文翻译/解读/重要性排序，渲染成 HTML 报告，通过 SMTP 发送邮件（HTML inline 进正文），并在 macOS 上发系统通知。
 
 代码组织为 `daily_report/` Python 包；`fetch_report.py` 是仅 5 行的入口（保持向后兼容现有 cron）。
 
@@ -14,11 +14,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # 安装依赖
 pip install -r requirements.txt
 
-# 设置 DeepSeek API Key（脚本中有 hardcode 兜底，但生产环境应通过环境变量传入）
-export DEEPSEEK_API_KEY="sk-..."
+# 设置 LLM API Key（任何 OpenAI 兼容接口；DEEPSEEK_API_KEY 仍可作兜底）
+export LLM_API_KEY="sk-..."
+# export LLM_BASE_URL="https://api.deepseek.com"   # DeepSeek（默认）
+# export LLM_MODEL="deepseek-chat"                  # 默认模型
 
 # 生成今日报告（一次完整跑通：拉数据 → LLM 处理 → HTML → 通知 + 邮件）
 python fetch_report.py
+
+# 运行单元测试（无网络/LLM 依赖）
+.venv/bin/python -m pytest tests/ -v
 ```
 
 报告产物写入 `reports/daily_report_YYYY-MM-DD.html`（带 UTF-8 BOM，邮件附件由 Mail.app 发送）。`reports/cron.log` 与 `reports/cron_error.log` 表明该脚本由 cron 定时调度。
@@ -75,7 +80,7 @@ LICENSE                        # MIT
 
 `fetch_ticker` 返回的 dict 含 `currency_symbol` 字段（US 是 `$`、HK 是 `HK$`、A 股是 `¥`、TSX 是 `C$`），`formatting.fmt_price` 与 `nm` 接受 currency 参数。
 
-**LLM 调用规范**：所有 DeepSeek 调用走 `news_llm._client()` 工厂（`OpenAI(base_url="https://api.deepseek.com")`）+ `deepseek-chat` 模型，温度区分用途（翻译 0.1、解读 0.5、要闻排序 0.3）。响应文本统一过 `_extract_json()` 剥围栏再解析。
+**LLM 调用规范**：所有 LLM 调用走 `news_llm._client()` 工厂，通过 `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` 三个环境变量配置，支持任何 OpenAI 兼容接口（默认 DeepSeek `deepseek-chat`）。`DEEPSEEK_API_KEY` 保留作向后兼容兜底。温度区分用途（翻译 0.1、解读 0.5、要闻排序 0.3）。响应文本统一过 `_extract_json()` 剥围栏再解析。
 
 **SMTP 调用规范**：`send_email()` 从环境变量读 `SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / EMAIL_FROM`。当前生产用 iCloud (`smtp.mail.me.com:587`)；Microsoft 个人 Outlook.com 账号已被切到 OAuth2-only，basic SMTP auth 不再可用，所以不要尝试。
 

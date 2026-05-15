@@ -19,7 +19,7 @@
   - **iCloud**（推荐）：在 [appleid.apple.com](https://appleid.apple.com) 生成应用专用密码
   - **Gmail**：开两步验证后生成应用密码
   - **微软个人 Outlook 账号不再可用**：Microsoft 已将其切到 OAuth2-only，basic SMTP（含应用密码）被服务器侧拦截
-- 一个 [DeepSeek API key](https://platform.deepseek.com)（代码通过 `openai` SDK + 自定义 `base_url` 调用；改一行可切换到其它 OpenAI 兼容的 LLM）
+- 任意 **OpenAI 兼容 LLM** 的 API key：[DeepSeek](https://platform.deepseek.com)（默认，性价比高）、[OpenAI](https://platform.openai.com)、[Groq](https://console.groq.com)，或本地 [Ollama](https://ollama.com) 实例 —— 通过 `.env` 里的 `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` 配置
 
 ## 安装
 
@@ -40,7 +40,10 @@ cp watchlist.example.json watchlist.json
 编辑 `.env`：
 
 ```
-DEEPSEEK_API_KEY=sk-...
+# LLM — 任意 OpenAI 兼容接口
+LLM_API_KEY=sk-...
+LLM_BASE_URL=https://api.deepseek.com   # 留空则走 OpenAI 官方端点；默认 DeepSeek
+LLM_MODEL=deepseek-chat                 # 例：gpt-4o / llama-3.3-70b-versatile / qwen2.5:7b
 
 SMTP_HOST=smtp.mail.me.com
 SMTP_PORT=587

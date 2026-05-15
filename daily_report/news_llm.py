@@ -1,13 +1,20 @@
 import json
+import logging
 
 from openai import OpenAI
 
-from .config import DEEPSEEK_API_KEY, PROMPTS_DIR
+from .config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, PROMPTS_DIR
 from .i18n import LOCALE
+from .utils import retry
+
+logger = logging.getLogger(__name__)
 
 
 def _client():
-    return OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
+    kwargs = {"api_key": LLM_API_KEY}
+    if LLM_BASE_URL:
+        kwargs["base_url"] = LLM_BASE_URL
+    return OpenAI(**kwargs)
 
 
 def _load_prompt(name):
@@ -20,10 +27,15 @@ def _load_prompt(name):
 
 
 def _extract_json(text):
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
     if "```json" in text:
-        text = text.split("```json")[1].split("```")[0]
+        text = text.split("```json", 1)[1].split("```")[0]
     elif "```" in text:
-        text = text.split("```")[1].split("```")[0]
+        text = text.split("```", 1)[1].split("```")[0]
     return json.loads(text.strip())
 
 
@@ -49,15 +61,18 @@ def process_news_with_llm(macro_news, all_data):
     )
 
     try:
-        resp = _client().chat.completions.create(
-            model="deepseek-chat",
-            max_tokens=8192,
-            temperature=0.3,
-            messages=[{"role": "user", "content": prompt}],
+        resp = retry(
+            lambda: _client().chat.completions.create(
+                model=LLM_MODEL,
+                max_tokens=8192,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}],
+            ),
+            label="highlights",
         )
         return _extract_json(resp.choices[0].message.content)
     except Exception as e:
-        print(f"  [WARN] DeepSeek API 调用失败: {e}")
+        logger.warning("DeepSeek highlights 调用失败: %s", e)
         return None
 
 
@@ -83,11 +98,14 @@ def summarize_stock_news(all_data):
         )
 
         try:
-            resp = client.chat.completions.create(
-                model="deepseek-chat",
-                max_tokens=4096,
-                temperature=0.5,
-                messages=[{"role": "user", "content": prompt}],
+            resp = retry(
+                lambda p=prompt: client.chat.completions.create(
+                    model=LLM_MODEL,
+                    max_tokens=4096,
+                    temperature=0.5,
+                    messages=[{"role": "user", "content": p}],
+                ),
+                label=d["symbol"],
             )
             data = _extract_json(resp.choices[0].message.content)
             for item in data.get("items", []):
@@ -112,7 +130,7 @@ def summarize_stock_news(all_data):
                 elif title:
                     all_summaries[title] = "暂无详细解读"
         except Exception as e:
-            print(f"    {d['symbol']} 新闻解读失败: {e}")
+            logger.warning("  %s 新闻解读失败: %s", d["symbol"], e)
 
     return all_summaries, irrelevant_titles
 
@@ -132,14 +150,17 @@ def translate_news_titles(all_data):
     prompt = _load_prompt("translate_titles.md").format(titles_list=titles_list)
 
     try:
-        resp = _client().chat.completions.create(
-            model="deepseek-chat",
-            max_tokens=2048,
-            temperature=0.1,
-            messages=[{"role": "user", "content": prompt}],
+        resp = retry(
+            lambda: _client().chat.completions.create(
+                model=LLM_MODEL,
+                max_tokens=2048,
+                temperature=0.1,
+                messages=[{"role": "user", "content": prompt}],
+            ),
+            label="translate_titles",
         )
         data = _extract_json(resp.choices[0].message.content)
         return {t["original"]: t["translated"] for t in data.get("translations", [])}
     except Exception as e:
-        print(f"失败: {e}")
+        logger.warning("标题翻译失败: %s", e)
         return {}

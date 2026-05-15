@@ -409,7 +409,7 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
   </div>
   <div class="sc-info">
     <span>{t("label_market_cap")} {nm(d['market_cap'], cur)}</span>
-    <span>{t("label_pe")} {d['pe_ratio'] or '-'}</span>
+    {f'<span>{t("label_pe")} {d["pe_ratio"]:.1f}</span>' if d.get("pe_ratio") else ''}
     <span>{t("label_52w_high")} {fmt_price(d['high_52w'], cur)}</span>
     <span>{t("label_52w_low")} {fmt_price(d['low_52w'], cur)}</span>
     <span>{t("label_volume")} {vol_str}</span>
