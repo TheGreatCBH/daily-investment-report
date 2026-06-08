@@ -1,4 +1,5 @@
 from datetime import datetime
+from html import escape
 
 from .chart import render_chart_png
 from .formatting import fmt_change, fmt_price, nm, volume_badge
@@ -113,6 +114,8 @@ def generate_html(all_data, llm_result, news_translations=None, news_analyses=No
   .overview-table .cn-name {{ font-size: .72rem; color: #9298a3; display: block; font-family: inherit; }}
   .up {{ color: #0d9550; font-weight: 600; }}
   .down {{ color: #dc2c3a; font-weight: 600; }}
+  .vol-hot {{ color: #b8862a; font-weight: 600; }}
+  .vol-cold {{ color: #9298a3; }}
 
   .highlight-card {{
     background: #ffffff;
@@ -315,11 +318,15 @@ def _render_highlights(highlights):
         rank = h.get("rank", 99)
         cls = f"rank-{min(rank, 2)}"
         is_macro = "macro" in h.get("type", "") or h.get("type") == "macro" or "symbol" not in h
-        tag_html = f'<span class="hl-tag hl-tag-macro">{t("tag_macro")}</span>' if is_macro else f'<span class="hl-tag hl-tag-stock">{h.get("symbol", "")}</span>'
+        symbol = escape(str(h.get("symbol", "")))
+        tag_html = f'<span class="hl-tag hl-tag-macro">{t("tag_macro")}</span>' if is_macro else f'<span class="hl-tag hl-tag-stock">{symbol}</span>'
+        title_cn = escape(str(h.get("title_cn", h.get("title", "-"))))
+        summary_cn = escape(str(h.get("summary_cn", "")))
+        publisher = escape(str(h.get("publisher", "")))
         items.append(f"""<div class="highlight-card {cls}">
-  <div class="hl-title">{tag_html}{h.get("title_cn", h.get("title", "-"))}</div>
-  <div class="hl-summary">{h.get("summary_cn", "")}</div>
-  <div class="hl-meta">{h.get("publisher", "")}</div>
+  <div class="hl-title">{tag_html}{title_cn}</div>
+  <div class="hl-summary">{summary_cn}</div>
+  <div class="hl-meta">{publisher}</div>
 </div>""")
     return "\n".join(items)
 
@@ -338,12 +345,13 @@ def _render_overview(all_data):
     for d in all_data:
         cur = d.get("currency_symbol", "$")
         primary, secondary = _primary_secondary(d)
+        primary_e, secondary_e = escape(str(primary)), escape(str(secondary))
         dc, dc_cls = fmt_change(d["day_change"])
         wc, wc_cls = fmt_change(d["week_change"])
         mc, mc_cls = fmt_change(d["month_change"])
         rows.append(
             f"""<tr>
-              <td><span class="sym">{primary}</span><span class="cn-name">{secondary}</span></td>
+              <td><span class="sym">{primary_e}</span><span class="cn-name">{secondary_e}</span></td>
               <td>{fmt_price(d['price'], cur)}</td>
               <td class="{dc_cls}">{dc}</td>
               <td class="{wc_cls}">{wc}</td>
@@ -372,33 +380,37 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
         dc, dc_cls = fmt_change(d["day_change"])
         wc, wc_cls = fmt_change(d["week_change"])
         mc, mc_cls = fmt_change(d["month_change"])
-        vol_str, _vol_cls = volume_badge(d["volume"], d["avg_volume"])
+        vol_str, vol_cls = volume_badge(d["volume"], d["avg_volume"])
+        vol_html = f'<b class="vol-{vol_cls}">{escape(vol_str)}</b>' if vol_cls else escape(vol_str)
 
         news_html = ""
         if d["news"]:
             items = []
             for n in d["news"][:3]:
-                title = news_translations.get(n["title"], n["title"])
-                analysis = news_analyses.get(n["title"], "")
+                title = escape(str(news_translations.get(n["title"], n["title"])))
+                analysis = escape(str(news_analyses.get(n["title"], "")))
+                src = escape(str(n["publisher"]))
                 if analysis:
                     items.append(f"""<div class="sc-news-item">
-  <div class="sc-news-title">{title}<span class="sc-news-src">{n["publisher"]}</span></div>
+  <div class="sc-news-title">{title}<span class="sc-news-src">{src}</span></div>
   <div class="sc-analysis">{analysis}</div>
 </div>""")
                 else:
-                    items.append(f'<div class="sc-news-item"><div class="sc-news-title">{title}<span class="sc-news-src">{n["publisher"]}</span></div></div>')
+                    items.append(f'<div class="sc-news-item"><div class="sc-news-title">{title}<span class="sc-news-src">{src}</span></div></div>')
             news_html = '<div class="sc-news">' + "".join(items) + "</div>"
 
         chart_hint = t("chart_intraday") if d["chart_type"] == "1d" else t("chart_recent")
         is_up = (d.get("month_change") or 0) >= 0
-        chart_b64 = render_chart_png(d["chart_dates"], d["chart_closes"], is_up)
+        chart_b64 = render_chart_png(d["chart_dates"], d["chart_closes"], is_up, cur)
 
         primary, secondary = _primary_secondary(d)
+        primary_e, secondary_e = escape(str(primary)), escape(str(secondary))
+        market_e = escape(str(d["market"]))
         cards.append(f"""<div class="stock-card">
   <div class="sc-header">
     <div>
-      <div class="sc-symbol">{primary}</div>
-      <div class="sc-name">{secondary} &middot; {d['market']}</div>
+      <div class="sc-symbol">{primary_e}</div>
+      <div class="sc-name">{secondary_e} &middot; {market_e}</div>
     </div>
     <div class="sc-price">{fmt_price(d['price'], cur)}</div>
   </div>
@@ -412,7 +424,7 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
     {f'<span>{t("label_pe")} {d["pe_ratio"]:.1f}</span>' if d.get("pe_ratio") else ''}
     <span>{t("label_52w_high")} {fmt_price(d['high_52w'], cur)}</span>
     <span>{t("label_52w_low")} {fmt_price(d['low_52w'], cur)}</span>
-    <span>{t("label_volume")} {vol_str}</span>
+    <span>{t("label_volume")} {vol_html}</span>
   </div>
   <div class="chart-wrap">
     <img src="data:image/png;base64,{chart_b64}" alt="{d['symbol']}走势图" />

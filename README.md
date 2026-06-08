@@ -4,13 +4,20 @@ A personal morning brief generator. Pulls watchlist quotes from Yahoo Finance an
 
 > 中文版：[README.zh-CN.md](README.zh-CN.md)
 
+<p align="center">
+  <img src="docs/sample_report.png" alt="Sample report" width="420">
+  <br>
+  <em>Sample report (top section) generated from the example watchlist.</em>
+</p>
+
 ## Features
 
 - **Multi-market in one watchlist**: US (NYSE/NASDAQ via yfinance), Hong Kong, and A-shares (Shanghai/Shenzhen via akshare).
 - **LLM-curated highlights**: each morning's news (macro + per-stock) translated to Chinese, ranked by importance for *your* holdings, top 10–15 items only.
 - **Per-stock interpretation**: 200–300 word commentary on every relevant news item, separating short-term and long-term impact.
 - **Email-safe HTML**: light cool-toned dashboard, inline base64 charts, no CSS variables — renders correctly in iOS Mail and Outlook for iOS without falling back to default styles.
-- **Scheduled**: macOS `launchd` weekday 09:30 (sample plist included), with native system notification on completion.
+- **Scheduled**: macOS `launchd` every day at 09:00 (sample plist included), with native system notification on completion.
+- **One-click manual run**: double-click `run_report.command` in Finder to trigger a report on demand, without waiting for the schedule.
 
 ## Requirements
 
@@ -89,12 +96,16 @@ The `name` field you write is the authoritative display name — it overrides an
 .venv/bin/python fetch_report.py
 ```
 
+On macOS you can also just **double-click `run_report.command`** in Finder to run it once on demand (drag it to the Dock or Desktop for a one-click shortcut). It runs the same pipeline and opens a Terminal window showing progress.
+
 This will:
 1. Pull S&P 500 macro news + per-stock quotes and news
 2. Call DeepSeek three times (highlights ranking, title translation, per-stock interpretation)
 3. Render HTML to `reports/daily_report_YYYY-MM-DD.html`
 4. Send the HTML by SMTP, inline in the message body
 5. Post a macOS notification (skipped silently on other platforms)
+
+> Tip: set `WATCHLIST_PATH=/path/to/other.json` to run against an alternate watchlist (e.g. a sanitized demo) without touching your real `watchlist.json`.
 
 ## Schedule (macOS launchd)
 
@@ -107,12 +118,19 @@ sed "s|REPO_PATH|$(pwd)|g" examples/com.investment.daily-report.plist \
 launchctl load ~/Library/LaunchAgents/com.investment.daily-report.plist
 ```
 
-The default schedule fires at 09:30 China time on weekdays (after the US after-hours session closes), which is when intraday US chart data is most complete.
+The default schedule fires every day at 09:00 local time. To run on weekdays only, split `StartCalendarInterval` into five dicts with `Weekday` 1–5 (a commented hint is in the plist).
 
-For Linux / cron:
+To reload after editing the schedule:
+
+```bash
+launchctl bootout gui/$(id -u)/com.investment.daily-report 2>/dev/null
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.investment.daily-report.plist
+```
+
+For Linux / cron (every day at 09:00):
 
 ```cron
-30 9 * * 1-5 cd /path/to/daily-investment-report && .venv/bin/python fetch_report.py >> reports/cron.log 2>> reports/cron_error.log
+0 9 * * * cd /path/to/daily-investment-report && .venv/bin/python fetch_report.py >> reports/cron.log 2>> reports/cron_error.log
 ```
 
 ## Architecture

@@ -8,14 +8,20 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 
-def render_chart_png(chart_dates, chart_closes, is_up):
+def render_chart_png(chart_dates, chart_closes, is_up, currency="$"):
     """用 matplotlib 生成走势图，返回 base64 PNG。
 
     色彩与 render_html.py 的浅色仪表盘配色保持一致：
     - 卡片底色 #ffffff
     - 涨绿 #0d9550 / 跌红 #dc2c3a
     - 刻度文字 #9298a3 / 网格 #e0e5ec
+
+    chart_closes 为空时（行情数据全部缺失）渲染一张占位空图，避免 min() 抛
+    ValueError 把整份报告生成流程拖崩。
     """
+    if not chart_closes:
+        chart_dates, chart_closes = ["--"], [0]
+
     color = "#0d9550" if is_up else "#dc2c3a"
     bg = "#ffffff"
 
@@ -35,7 +41,7 @@ def render_chart_png(chart_dates, chart_closes, is_up):
 
     ax.yaxis.set_major_locator(ticker.MaxNLocator(4))
     ax.tick_params(axis="y", labelsize=9, colors="#9298a3", length=0, pad=4)
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda v, _: f"${v:.1f}"))
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda v, _: f"{currency}{v:.1f}"))
 
     for spine in ax.spines.values():
         spine.set_visible(False)

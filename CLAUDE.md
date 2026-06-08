@@ -26,7 +26,7 @@ python fetch_report.py
 .venv/bin/python -m pytest tests/ -v
 ```
 
-报告产物写入 `reports/daily_report_YYYY-MM-DD.html`（带 UTF-8 BOM，邮件附件由 Mail.app 发送）。`reports/cron.log` 与 `reports/cron_error.log` 表明该脚本由 cron 定时调度。
+报告产物写入 `reports/daily_report_YYYY-MM-DD.html`（带 UTF-8 BOM；HTML 通过 SMTP `add_alternative` 内嵌进邮件正文发送，不再是附件、不再走 Mail.app）。`reports/cron.log` 与 `reports/cron_error.log` 由 launchd 调度时的 stdout/stderr 重定向产生（macOS 用 launchd，非 cron；见 `examples/com.investment.daily-report.plist`，默认每天 09:00）。本机可双击 `run_report.command` 手动触发一次。
 
 ## 架构要点
 
@@ -67,7 +67,7 @@ LICENSE                        # MIT
 4. `process_news_with_llm()` 把所有新闻一次性丢给 DeepSeek，让它翻译标题、写 100-150 字摘要、跨宏观/个股按重要性排序，保留 10-15 条作为「今日要闻」。`user_symbols` 由 watchlist 动态拼出（不再硬编码）。
 5. `translate_news_titles()` 批量翻译每只标的卡片底部的新闻标题。
 6. `summarize_stock_news()` 按股票批量调用 LLM，为每条新闻生成 200-300 字中文解读；对 ETF 标的，若 LLM 判定新闻不相关（`analysis == "IRRELEVANT"`），会做关键词兜底（黄金类用 `gold/mining/bullion/...`；加拿大银行类用 `bank/tsx/bmo/...`）防止被误删。
-7. `render_chart_png()` 用 matplotlib 把日内走势生成 PNG，再以 base64 内嵌进 HTML（关键：邮件附件场景下不能依赖外链图）。
+7. `render_chart_png()` 用 matplotlib 把日内走势生成 PNG，再以 base64 内嵌进 HTML（关键：邮件内嵌正文场景下不能依赖外链图）。
 8. `generate_html()` + `_render_*` 系列函数拼装最终 HTML。样式高度自定义（深色主题、CSS 变量集中在 `:root`）。
 9. `send_notification()` 在 macOS 上用 `osascript display notification` 发系统通知，非 macOS 静默 skip；`send_email()` 用 `smtplib + email.mime.EmailMessage`，HTML 通过 `add_alternative(..., subtype="html")` 内嵌进正文（不再是附件）。
 

@@ -41,6 +41,7 @@ def main():
                     s,
                     search_terms=it.get("search_terms"),
                     name=it.get("name"),
+                    description=it.get("description"),
                 ),
                 label=sym,
             )
@@ -53,7 +54,7 @@ def main():
         logger.error("没有成功拉取到任何数据，退出。")
         return
 
-    logger.info("正在用 DeepSeek 处理新闻（翻译、排序、摘要）…")
+    logger.info("正在用 LLM 处理新闻（翻译、排序、摘要）…")
     llm_result = process_news_with_llm(macro_news, results)
     if llm_result:
         mh = len(llm_result.get("macro_highlights", []))

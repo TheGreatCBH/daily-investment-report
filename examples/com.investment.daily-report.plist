@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Example launchd agent for macOS that runs fetch_report.py on weekday
-  mornings at 09:30. Before installing, replace every occurrence of
+  Example launchd agent for macOS that runs fetch_report.py every day
+  at 09:00 (local time). Before installing, replace every occurrence of
   REPO_PATH with the absolute path to your cloned repo
   (e.g. /Users/yourname/daily-investment-report) and copy this file to
   ~/Library/LaunchAgents/, then `launchctl load <path>`.
@@ -21,14 +21,12 @@
     <key>WorkingDirectory</key>
     <string>REPO_PATH</string>
 
+    <!-- 每天 09:00（不含 Weekday key 即每天触发）。只想工作日跑时，按 Weekday 1-5 拆成 5 条。 -->
     <key>StartCalendarInterval</key>
-    <array>
-        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>1</integer></dict>
-        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>2</integer></dict>
-        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>3</integer></dict>
-        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>4</integer></dict>
-        <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer><key>Weekday</key><integer>5</integer></dict>
-    </array>
+    <dict>
+        <key>Hour</key><integer>9</integer>
+        <key>Minute</key><integer>0</integer>
+    </dict>
 
     <key>StandardOutPath</key>
     <string>REPO_PATH/reports/cron.log</string>

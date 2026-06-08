@@ -51,7 +51,7 @@ def process_news_with_llm(macro_news, all_data):
             })
 
     if not all_items:
-        return {"highlights": [], "macro_news": []}
+        return {"macro_highlights": [], "stock_highlights": []}
 
     items_json = json.dumps(all_items, ensure_ascii=False, indent=2)
     user_symbols = " ".join(d["symbol"] for d in all_data)
@@ -60,9 +60,10 @@ def process_news_with_llm(macro_news, all_data):
         user_symbols=user_symbols,
     )
 
+    client = _client()
     try:
         resp = retry(
-            lambda: _client().chat.completions.create(
+            lambda: client.chat.completions.create(
                 model=LLM_MODEL,
                 max_tokens=8192,
                 temperature=0.3,
@@ -72,7 +73,7 @@ def process_news_with_llm(macro_news, all_data):
         )
         return _extract_json(resp.choices[0].message.content)
     except Exception as e:
-        logger.warning("DeepSeek highlights 调用失败: %s", e)
+        logger.warning("LLM highlights 调用失败: %s", e)
         return None
 
 
@@ -149,9 +150,10 @@ def translate_news_titles(all_data):
     titles_list = "\n".join(f"- {v}" for v in titles_map.values())
     prompt = _load_prompt("translate_titles.md").format(titles_list=titles_list)
 
+    client = _client()
     try:
         resp = retry(
-            lambda: _client().chat.completions.create(
+            lambda: client.chat.completions.create(
                 model=LLM_MODEL,
                 max_tokens=2048,
                 temperature=0.1,

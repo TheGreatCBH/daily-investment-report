@@ -4,13 +4,20 @@
 
 > English version: [README.md](README.md)
 
+<p align="center">
+  <img src="docs/sample_report.png" alt="报告示例" width="420">
+  <br>
+  <em>报告示例（顶部片段），由示例 watchlist 生成。</em>
+</p>
+
 ## 功能
 
 - **一份 watchlist 覆盖三个市场**：美股（yfinance）、港股、A 股（akshare）
 - **AI 精选要闻**：每日宏观 + 个股新闻统一翻译为中文，按对你**持仓**的重要性排序，仅保留 10–15 条
 - **个股深度解读**：每条相关新闻 200–300 字中文分析，区分短期/长期影响
 - **邮件兼容性**：浅色仪表盘 + 行内 base64 走势图 + 无 CSS 变量 —— iOS Mail / Outlook for iOS 都能正常渲染
-- **定时调度**：自带 macOS `launchd` 示例 plist，每周一至周五 09:30 触发；运行完通过 osascript 发系统通知
+- **定时调度**：自带 macOS `launchd` 示例 plist，每天 09:00 触发；运行完通过 osascript 发系统通知
+- **一键手动触发**：在 Finder 里双击 `run_report.command` 即可立即跑一次，不用等定时
 
 ## 依赖
 
@@ -89,12 +96,16 @@ EMAIL_FROM=you@icloud.com
 .venv/bin/python fetch_report.py
 ```
 
+macOS 上也可以直接**双击 `run_report.command`** 立即跑一次（可把它拖到 Dock 或桌面当快捷入口）。它跑的是同一条流程，会弹出终端窗口显示进度。
+
 整个流程：
 1. 拉取 S&P 500 宏观新闻 + 每只标的的行情和新闻
 2. 调用 DeepSeek 三次（要闻排序、标题翻译、个股解读）
 3. 渲染 HTML 到 `reports/daily_report_YYYY-MM-DD.html`
 4. 通过 SMTP 把 HTML 内嵌进邮件正文发出
 5. 在 macOS 上弹系统通知（其它平台静默 skip）
+
+> 提示：设置 `WATCHLIST_PATH=/path/to/other.json` 可指向另一份 watchlist 运行（比如脱敏 demo），无需改动真实的 `watchlist.json`。
 
 ## 定时（macOS launchd）
 
@@ -107,12 +118,19 @@ sed "s|REPO_PATH|$(pwd)|g" examples/com.investment.daily-report.plist \
 launchctl load ~/Library/LaunchAgents/com.investment.daily-report.plist
 ```
 
-默认调度是北京时间周一至周五 09:30（=美东盘后约 5.5 小时之后），此时拿到的美股日内走势数据最完整。
+默认调度是每天 09:00（本机时间）触发。若只想工作日跑，把 `StartCalendarInterval` 拆成 5 个带 `Weekday` 1–5 的 dict（plist 里有注释提示）。
 
-Linux / cron 版本：
+改完调度后重新加载：
+
+```bash
+launchctl bootout gui/$(id -u)/com.investment.daily-report 2>/dev/null
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.investment.daily-report.plist
+```
+
+Linux / cron 版本（每天 09:00）：
 
 ```cron
-30 9 * * 1-5 cd /path/to/daily-investment-report && .venv/bin/python fetch_report.py >> reports/cron.log 2>> reports/cron_error.log
+0 9 * * * cd /path/to/daily-investment-report && .venv/bin/python fetch_report.py >> reports/cron.log 2>> reports/cron_error.log
 ```
 
 ## 架构

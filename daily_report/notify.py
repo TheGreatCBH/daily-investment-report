@@ -15,8 +15,9 @@ def _esc_as(s):
 
 
 def _esc_ps(s):
-    """PowerShell 双引号字符串转义：双引号 → 连续两个双引号。"""
-    return str(s).replace('"', '""')
+    """PowerShell 双引号字符串转义：双引号 → 连续两个双引号；并中和 backtick 转义符
+    与 $(...) 子表达式展开（防止将来传入不可信文本时被当代码执行）。"""
+    return str(s).replace("`", "``").replace('"', '""').replace("$", "`$")
 
 
 def send_notification(title, message):

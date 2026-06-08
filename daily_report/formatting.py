@@ -16,16 +16,18 @@ def fmt_price(val, currency="$"):
 
 
 def nm(val, currency="$"):
-    """市值缩写：1e12 以上用 T，否则用 B（兼容美元亿/万亿 + A 股人民币千亿/万亿）。"""
+    """市值缩写：≥1e12 用 T、≥1e9 用 B、否则用 M（避免 A 股小盘 <1e9 显示成 ¥0B）。"""
     if val is None:
         return "-"
     if val >= 1e12:
         return f"{currency}{val / 1e12:.2f}T"
-    return f"{currency}{val / 1e9:.0f}B"
+    if val >= 1e9:
+        return f"{currency}{val / 1e9:.0f}B"
+    return f"{currency}{val / 1e6:.0f}M"
 
 
 def volume_badge(vol, avg):
-    if not vol or not avg or avg == 0:
+    if not vol or not avg:
         return ("-", "")
     r = vol / avg
     if r >= 1.5:

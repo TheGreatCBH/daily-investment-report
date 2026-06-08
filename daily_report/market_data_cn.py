@@ -8,9 +8,13 @@ A 股（`.SS` / `.SZ`）：
 港股（`.HK`）：行情仍在 yfinance（见 market_data._fetch_yf_ticker），
 本模块只补充提供 akshare 中文新闻替换 yfinance 的英文稀疏新闻。
 """
+import logging
+
 import akshare as ak
 
 from .i18n import t
+
+logger = logging.getLogger(__name__)
 
 
 def _code(symbol):
@@ -26,11 +30,12 @@ def _sina_symbol(symbol):
     return f"sz{code}"
 
 
-def fetch_a_share(symbol, search_terms=None, name=None):
+def fetch_a_share(symbol, search_terms=None, name=None, description=None):
     """A 股完整 fetch：返回与 yfinance fetch_ticker 同形状的字典。
 
     name 来自 watchlist.json 用户填写值，作为名称的主源。
     若 name 为空，再 best-effort 试 akshare 个股信息接口，最后回退到代码。
+    description 透传进返回 dict，与 yfinance 分支保持同形状（供下游 LLM 相关性判断）。
     """
     code = _code(symbol)
     sina_sym = _sina_symbol(symbol)
@@ -48,7 +53,8 @@ def fetch_a_share(symbol, search_terms=None, name=None):
             info_df = ak.stock_individual_info_em(symbol=code)
             info = dict(zip(info_df["item"], info_df["value"]))
             resolved_name = str(info.get("股票简称") or code)
-        except Exception:
+        except Exception as e:
+            logger.warning("A 股名称查询失败 [%s]: %s，回退到代码", code, e)
             resolved_name = code
 
     # 盘中 5 分钟线（最近一天）
@@ -60,12 +66,12 @@ def fetch_a_share(symbol, search_terms=None, name=None):
             last_date = df_min["day"].iloc[-1][:10]
             df_today = df_min[df_min["day"].str.startswith(last_date)]
             if len(df_today) > 5:
-                # "2026-05-14 14:55:00" -> "14:55"
-                chart_dates = [t[11:16] for t in df_today["day"]]
+                # "2026-05-14 14:55:00" -> "14:55"（day_str 避免遮蔽 i18n.t）
+                chart_dates = [day_str[11:16] for day_str in df_today["day"]]
                 chart_closes = [round(float(v), 2) for v in df_today["close"]]
                 chart_type = "1d"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("A 股分钟线拉取失败 [%s]: %s，回退到日线走势", sina_sym, e)
 
     if not chart_dates:
         df_m = df_year.tail(30)
@@ -77,12 +83,12 @@ def fetch_a_share(symbol, search_terms=None, name=None):
     prev_close = float(closes.iloc[-2]) if len(closes) >= 2 else None
     day_change = (current - prev_close) / prev_close * 100 if prev_close else None
 
-    # 5 交易日 ≈ 1 自然周（iloc[-6] 多取 1 行作缓冲），22 交易日 ≈ 1 自然月
+    # 5 交易日 ≈ 1 自然周（iloc[-6] 多取 1 行作缓冲）；iloc[-22] 往前约 21 个交易日 ≈ 1 自然月
     week_close = float(closes.iloc[-6] if len(closes) >= 6 else closes.iloc[0])
-    week_change = (current - week_close) / week_close * 100
+    week_change = (current - week_close) / week_close * 100 if week_close else None
 
     month_close = float(closes.iloc[-22] if len(closes) >= 22 else closes.iloc[0])
-    month_change = (current - month_close) / month_close * 100
+    month_change = (current - month_close) / month_close * 100 if month_close else None
 
     high_52w = float(df_year["high"].astype(float).max())
     low_52w = float(df_year["low"].astype(float).min())
@@ -95,8 +101,8 @@ def fetch_a_share(symbol, search_terms=None, name=None):
     try:
         outstanding = float(df_year["outstanding_share"].iloc[-1])
         market_cap = outstanding * current
-    except (KeyError, ValueError, TypeError):
-        pass
+    except (KeyError, ValueError, TypeError) as e:
+        logger.debug("A 股市值计算失败 [%s]: %s", symbol, e)
 
     return {
         "symbol": symbol,
@@ -118,6 +124,9 @@ def fetch_a_share(symbol, search_terms=None, name=None):
         "chart_dates": chart_dates,
         "chart_closes": chart_closes,
         "chart_type": chart_type,
+        # 与 yfinance 分支同形状：回灌 search_terms / description 供下游 LLM 判断
+        "search_terms": search_terms,
+        "description": description or "",
         "news": _fetch_news_ak(code),
     }
 
@@ -126,7 +135,8 @@ def _fetch_news_ak(code, max_results=5):
     """从东方财富新闻接口拉某代码相关新闻；A 股传 6 位代码，港股传 5 位代码。"""
     try:
         df = ak.stock_news_em(symbol=code)
-    except Exception:
+    except Exception as e:
+        logger.warning("akshare stock_news_em 失败 [%s]: %s", code, e)
         return []
     if df.empty:
         return []

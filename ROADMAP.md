@@ -18,7 +18,7 @@
 - [x] 模块化包名定为 `daily_report/` ✓ 2026-05-14
 - [x] HTML 保持单文件渲染（提取 `render_html.py`），不外置 CSS ✓ 2026-05-14
 - [x] A/H 股方案：A+ 混合 —— A 股行情/新闻全 akshare（Sina 日线 + EastMoney 新闻），港股 yfinance 行情 + akshare 新闻 ✓ 2026-05-14
-- [ ] 邮件 SMTP 通道：Gmail / Outlook / QQ-163 / 第三方 API（SendGrid / Resend）？（项目 4）
+- [x] 邮件 SMTP 通道：选定 iCloud（`smtp.mail.me.com:587` + 应用专用密码）；Outlook 个人号 OAuth2-only 不可用 ✓ 2026-05-14
 
 ---
 
@@ -94,7 +94,7 @@
 - [x] `LICENSE`：MIT，2026 TheGreatCBH ✓ 2026-05-14
 - [x] `examples/com.investment.daily-report.plist`：脱敏 launchd 模板（REPO_PATH 占位）✓ 2026-05-14
 - [x] Outlook personal OAuth2-only 的坑、Microsoft 不可用、iCloud 推荐路径写进 README ✓ 2026-05-14
-- [ ] 报告效果截图（暂不放，后续随时补）
+- [x] 报告效果截图：`docs/sample_report.png`（脱敏示例 watchlist 生成，顶部代表性片段）✓ 2026-06-08
 - [x] commit `3c257d0`（+366 -8，6 文件）✓ 2026-05-14
 - [x] **push 到 GitHub public repo**：https://github.com/TheGreatCBH/daily-investment-report ✓ 2026-05-14
 
@@ -124,4 +124,13 @@
 - [x] `pipeline.py` / `notify.py` / `news_llm.py` `print` → `logging`（`basicConfig` 在 `pipeline.main()` 里初始化）✓ 2026-05-15
 - [x] `market_data.py` `df_month` 重命名 → `df_1mo` + 交易日近似注释；`market_data_cn.py` 252/22/6 同步注释 ✓ 2026-05-15
 - [x] A 股 PE：`pe_ratio` 为 None 时 HTML 不渲染该行（不再显示 "PE -"）✓ 2026-05-15
-- [ ] README 加报告效果截图
+- [x] README 加报告效果截图 ✓ 2026-06-08
+
+---
+
+## 9. [x] 定时改每天 09:00 + 本机一键手动触发 ✓ 2026-06-08
+
+- [x] launchd 调度从「工作日 09:30」改为「每天 09:00」（`StartCalendarInterval` 单 dict，无 Weekday key）—— 同步改 `examples/` 模板与已安装 plist，并 bootout/bootstrap 重载生效 ✓ 2026-06-08
+- [x] 新增 `run_report.command`（双击即跑，等价定时任务；带可执行位 + macOS 信任说明）✓ 2026-06-08
+- [x] `config.py` 加 `WATCHLIST_PATH` 环境变量覆盖（用于 demo/测试指向备用 watchlist，不碰生产 watchlist.json）+ 2 个单测 ✓ 2026-06-08
+- [x] README 双语同步：截图、每天 09:00、手动触发、reload 命令、`WATCHLIST_PATH` 提示 ✓ 2026-06-08

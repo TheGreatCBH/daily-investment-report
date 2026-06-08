@@ -46,7 +46,7 @@ _STRINGS = {
         "market_sz": "深交所",
 
         # 页脚
-        "footer_credit": "Yahoo Finance · DeepSeek AI 摘要",
+        "footer_credit": "Yahoo Finance · AI 摘要",
 
         # 邮件 / 通知
         "email_subject": "每日投资简报",
@@ -84,7 +84,7 @@ _STRINGS = {
         "market_sh": "Shanghai",
         "market_sz": "Shenzhen",
 
-        "footer_credit": "Yahoo Finance · DeepSeek AI Summary",
+        "footer_credit": "Yahoo Finance · AI Summary",
 
         "email_subject": "Daily Investment Brief",
         "notification_title": "Daily Investment Brief",

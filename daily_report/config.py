@@ -5,7 +5,9 @@ from pathlib import Path
 # 注意：.env 已由 daily_report/__init__.py 在包导入时加载，这里只负责读取。
 
 ROOT = Path(__file__).resolve().parent.parent
-WATCHLIST_PATH = ROOT / "watchlist.json"
+# WATCHLIST_PATH 可由环境变量覆盖（用于生成 demo 报告 / 测试时指向备用 watchlist，
+# 不必改动生产用的 watchlist.json）；不设置时回退到仓库根目录的 watchlist.json。
+WATCHLIST_PATH = Path(os.environ.get("WATCHLIST_PATH") or ROOT / "watchlist.json")
 REPORTS_DIR = ROOT / "reports"
 PROMPTS_DIR = ROOT / "prompts"
 

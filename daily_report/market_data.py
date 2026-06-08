@@ -1,6 +1,10 @@
+import logging
 from datetime import datetime
 
 import yfinance as yf
+from dateutil import parser as date_parser
+
+logger = logging.getLogger(__name__)
 
 
 def _detect_market(symbol):
@@ -31,7 +35,8 @@ def search_news(term, max_results=5):
         from yfinance import Search
         s = Search(term)
         raw = s.news[:max_results] if s.news else []
-    except Exception:
+    except Exception as e:
+        logger.warning("yfinance Search 失败 [%s]: %s", term, e)
         return []
     items = []
     for n in raw:
@@ -57,20 +62,21 @@ def search_news(term, max_results=5):
     return items
 
 
-def fetch_ticker(symbol, search_terms=None, name=None):
+def fetch_ticker(symbol, search_terms=None, name=None, description=None):
     """统一入口：按 symbol 后缀分派到 yfinance 或 akshare。
 
     name: watchlist.json 中用户填写的显示名；用于 A 股（akshare 元数据偶发不可用时的兜底）。
     yfinance 分支会用 ticker info 里的 longName/shortName，name 参数仅当所有自动来源都失败时兜底。
+    description: watchlist.json 中标的描述，透传进返回 dict 供 summarize_stock_news 的 LLM 相关性判断使用。
     """
     market = _detect_market(symbol)
 
     if market in ("SH", "SZ"):
         # A 股：行情 + 新闻全部走 akshare
         from .market_data_cn import fetch_a_share
-        return fetch_a_share(symbol, search_terms, name=name)
+        return fetch_a_share(symbol, search_terms, name=name, description=description)
 
-    data = _fetch_yf_ticker(symbol, search_terms, market)
+    data = _fetch_yf_ticker(symbol, search_terms, market, description)
     # watchlist 用户写的 name 永远优先，覆盖 yfinance 的 longName
     # （这样用户在 watchlist.json 里写"诺和诺德"/"腾讯控股"等中文别名能生效）
     if name:
@@ -86,7 +92,7 @@ def fetch_ticker(symbol, search_terms=None, name=None):
     return data
 
 
-def _fetch_yf_ticker(symbol, search_terms, market):
+def _fetch_yf_ticker(symbol, search_terms, market, description=None):
     t = yf.Ticker(symbol)
     info = t.info
 
@@ -105,8 +111,11 @@ def _fetch_yf_ticker(symbol, search_terms, market):
     if len(df_1mo) >= 2:
         # 5 交易日前 ≈ 1 周前；iloc[-6] 多取 1 行作为缓冲
         week_close = df_1mo.iloc[-6]["Close"] if len(df_1mo) >= 6 else df_1mo.iloc[0]["Close"]
-        week_change = (df_1mo.iloc[-1]["Close"] - week_close) / week_close * 100
-        month_change = (df_1mo.iloc[-1]["Close"] - df_1mo.iloc[0]["Close"]) / df_1mo.iloc[0]["Close"] * 100
+        month_close = df_1mo.iloc[0]["Close"]
+        last_close = df_1mo.iloc[-1]["Close"]
+        # 停牌/异常导致基准价为 0 时返回 None，避免 ZeroDivisionError 拖垮整只标的
+        week_change = (last_close - week_close) / week_close * 100 if week_close else None
+        month_change = (last_close - month_close) / month_close * 100 if month_close else None
     else:
         week_change = month_change = None
 
@@ -137,12 +146,12 @@ def _fetch_yf_ticker(symbol, search_terms, market):
         c = n.get("content", n)
         pub_str = c.get("pubDate") or c.get("displayTime", "")
         try:
-            from dateutil import parser as date_parser
             dt = date_parser.parse(pub_str)
             if (datetime.now(dt.tzinfo) - dt).days > max_age_days:
                 continue
-        except Exception:
-            pass
+        except Exception as e:
+            # 日期无法解析时保留该条（宁可偶发旧闻，也不静默丢掉可能的新闻），但记 debug 便于排查
+            logger.debug("新闻日期解析失败，保留该条 [%r]: %s", pub_str, e)
         title_key = c.get("title", "")[:60]
         if title_key in seen_titles:
             continue
@@ -173,16 +182,19 @@ def _fetch_yf_ticker(symbol, search_terms, market):
         "chart_dates": chart_dates,
         "chart_closes": chart_closes,
         "chart_type": chart_type,
+        # search_terms / description 回灌进 dict，供 summarize_stock_news 的 ETF 关键词兜底
+        # 与 LLM 相关性判断使用（否则那段逻辑拿不到值，等同死代码）
+        "search_terms": search_terms,
+        "description": description or "",
         "news": news_items,
     }
 
 
 def fetch_macro_news():
-    try:
-        sp = yf.Ticker("^GSPC")
-        raw = sp.news[:8] if sp.news else []
-    except Exception:
-        raw = []
+    # 不在此吞异常：让失败抛给 pipeline 的 retry + except（那里有 WARNING 日志和空列表兜底），
+    # 否则网络故障会被静默成「OK (0 条)」且不触发重试。
+    sp = yf.Ticker("^GSPC")
+    raw = sp.news[:8] if sp.news else []
     items = []
     for n in raw:
         c = n.get("content", n)
