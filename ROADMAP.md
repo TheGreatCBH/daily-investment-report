@@ -134,3 +134,19 @@
 - [x] 新增 `run_report.command`（双击即跑，等价定时任务；带可执行位 + macOS 信任说明）✓ 2026-06-08
 - [x] `config.py` 加 `WATCHLIST_PATH` 环境变量覆盖（用于 demo/测试指向备用 watchlist，不碰生产 watchlist.json）+ 2 个单测 ✓ 2026-06-08
 - [x] README 双语同步：截图、每天 09:00、手动触发、reload 命令、`WATCHLIST_PATH` 提示 ✓ 2026-06-08
+
+---
+
+## 10. [x] 全项目 code review + 全量修复（含 Minor）✓ 2026-06-08
+
+3 个独立 subagent（python-reviewer / silent-failure-hunter / 架构正确性）交叉审查，发现项全部修复并补回归测试（20 → 32 passed）。同 commit `23cd0fc`。
+
+- [x] **C-1** `fetch_ticker` 返回 dict 回灌 `search_terms`/`description`（pipeline 透传）—— 修复 ETF 关键词兜底 + LLM 相关性上下文的**死代码**（3 个 agent 独立发现 + 实时数据验证）✓ 2026-06-08
+- [x] **C-2** `render_chart_png` 空数据 guard，避免 `min([])` 拖垮整份报告 ✓ 2026-06-08
+- [x] HTML 注入：`render_html` 对 LLM/新闻文本统一 `html.escape`（含 XSS payload 冒烟验证）✓ 2026-06-08
+- [x] 除零防守：`week_change`/`month_change` 基准价为 0 时返回 None（yf + cn 两分支）✓ 2026-06-08
+- [x] 静默失败补日志：`search_news` / `_fetch_news_ak` / A 股名称·分钟线·市值 / 日期解析；`fetch_macro_news` 去内部 except 让异常传播到 retry ✓ 2026-06-08
+- [x] `notify._esc_ps` 中和 backtick / `$(...)` 注入面 ✓ 2026-06-08
+- [x] `news_llm` 复用 OpenAI client；空返回 key 对齐下游契约（`macro_highlights`/`stock_highlights`）✓ 2026-06-08
+- [x] chart Y 轴货币符号参数化（$/¥/HK$/C$）；`volume_badge` hot/cold 配色生效；`nm` 加 M 档避免小盘 0B ✓ 2026-06-08
+- [x] 去硬编码 "DeepSeek"（日志 + footer → 中性 "AI 摘要"）；`dateutil` import 提顶层；修正 CLAUDE.md 过时描述（SMTP/launchd）✓ 2026-06-08
