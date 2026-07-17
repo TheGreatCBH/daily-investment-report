@@ -171,6 +171,67 @@ class TestExtractJson:
         assert _extract_json('```\n{"a": 1}\n```') == {"a": 1}
 
 
+class TestTranslateNewsTitles:
+    """标题翻译分批：去重、分批调用、单批失败不拖垮其余批次。"""
+
+    def _data(self, titles):
+        return [{"symbol": "X", "news": [{"title": t} for t in titles]}]
+
+    def test_empty_returns_empty(self):
+        from daily_report import news_llm
+
+        assert news_llm.translate_news_titles([]) == {}
+
+    def test_batches_by_size(self, monkeypatch):
+        from daily_report import news_llm
+
+        calls = []
+        monkeypatch.setattr(news_llm, "_TRANSLATE_BATCH_SIZE", 2)
+        monkeypatch.setattr(news_llm, "_client", lambda: None)
+        monkeypatch.setattr(news_llm, "_load_prompt", lambda name: "")
+
+        def fake_batch(client, template, titles):
+            calls.append(list(titles))
+            return {t: f"译:{t}" for t in titles}
+
+        monkeypatch.setattr(news_llm, "_translate_titles_batch", fake_batch)
+        out = news_llm.translate_news_titles(self._data(["a", "b", "c"]))
+        # 3 条、批大小 2 → 2 批（[a,b] / [c]）
+        assert calls == [["a", "b"], ["c"]]
+        assert out == {"a": "译:a", "b": "译:b", "c": "译:c"}
+
+    def test_dedups_by_full_title(self, monkeypatch):
+        from daily_report import news_llm
+
+        seen_batches = []
+        monkeypatch.setattr(news_llm, "_client", lambda: None)
+        monkeypatch.setattr(news_llm, "_load_prompt", lambda name: "")
+
+        def fake_batch(client, template, titles):
+            seen_batches.append(list(titles))
+            return {t: t for t in titles}
+
+        monkeypatch.setattr(news_llm, "_translate_titles_batch", fake_batch)
+        news_llm.translate_news_titles(self._data(["dup", "dup", "other"]))
+        assert seen_batches == [["dup", "other"]]
+
+    def test_one_failed_batch_keeps_others(self, monkeypatch):
+        from daily_report import news_llm
+
+        monkeypatch.setattr(news_llm, "_TRANSLATE_BATCH_SIZE", 1)
+        monkeypatch.setattr(news_llm, "_client", lambda: None)
+        monkeypatch.setattr(news_llm, "_load_prompt", lambda name: "")
+
+        def fake_batch(client, template, titles):
+            if titles == ["boom"]:
+                raise ValueError("simulated truncation")
+            return {t: f"译:{t}" for t in titles}
+
+        monkeypatch.setattr(news_llm, "_translate_titles_batch", fake_batch)
+        out = news_llm.translate_news_titles(self._data(["ok1", "boom", "ok2"]))
+        assert out == {"ok1": "译:ok1", "ok2": "译:ok2"}
+
+
 class TestRenderChartEmpty:
     """行情数据全空时 render_chart_png 必须返回占位图而非抛 ValueError。"""
 
