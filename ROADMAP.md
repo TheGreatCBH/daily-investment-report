@@ -150,3 +150,19 @@
 - [x] `news_llm` 复用 OpenAI client；空返回 key 对齐下游契约（`macro_highlights`/`stock_highlights`）✓ 2026-06-08
 - [x] chart Y 轴货币符号参数化（$/¥/HK$/C$）；`volume_badge` hot/cold 配色生效；`nm` 加 M 档避免小盘 0B ✓ 2026-06-08
 - [x] 去硬编码 "DeepSeek"（日志 + footer → 中性 "AI 摘要"）；`dateutil` import 提顶层；修正 CLAUDE.md 过时描述（SMTP/launchd）✓ 2026-06-08
+
+---
+
+## 11. [~] 日内走势图重做（颜色绑当日涨跌 + 前收基准线 + 时段压缩 + 分段底纹）
+
+设计定稿 → 实现完成，测试 42 passed。眼验 artifact（真实数据）：https://claude.ai/code/artifact/7d5451c7-0546-491a-91fa-f678c02b1c03
+
+- [x] `chart.py` 三渲染路径：`_render_extended`(美股延长时段) / `_render_session`(港股·A股) / `_render_fallback`(缺数据仅改色)；`render_chart_png` 新增可选 `intraday=` 分派，老签名全兼容 ✓ 2026-07-17
+- [x] 颜色绑**当日涨跌**（末价 vs 前收基准线，替换旧 `month_change`）；前收基准线整幅一条淡虚线 ✓ 2026-07-17
+- [x] 时间轴压缩：美股三档（常规盘 1× / 盘前后 0.4× / 隔夜定长）；session 市场 LEAD 盘前段 + 午休压缩 ✓ 2026-07-17
+- [x] 分段底纹（仅美股有盘前后浅灰 / 无数据更深灰）；虚实线语义（无数据虚线、跨日/开盘加粗 jump、午休细连线）✓ 2026-07-17
+- [x] **盘中往前借一个完整交易日**：今日不完整→「上一完整交易日 + 今日残段」跨日 jump，基准 = 前两日收盘；今日完整→只画今日。港股/A股共用 `_build_session_intraday` ✓ 2026-07-17
+- [x] **A 股分钟线改走 yfinance**（akshare Sina 当日 5m 前复权价返回 NaN → 茅台空白；yfinance 当日无 NaN）；日线/市值/涨跌/新闻仍走 akshare ✓ 2026-07-17
+- [x] matplotlib 配置中文字体（默认 DejaVu 无中文字形，「前收」会渲成方框）；y 轴价格统一 2 位小数 ✓ 2026-07-17
+- [x] 决策：跨两日**不分段**算涨跌，整幅单色（小图重趋势形状、精确涨跌由卡片数字负责、与美股一致）✓ 2026-07-17
+- [ ] **待办**：一轮 `/code-review`（独立 review，留给 compact 后 fresh 会话）+ 用户最终眼验 + commit

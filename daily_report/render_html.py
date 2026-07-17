@@ -400,8 +400,10 @@ def _render_stock_cards(all_data, news_translations=None, news_analyses=None):
             news_html = '<div class="sc-news">' + "".join(items) + "</div>"
 
         chart_hint = t("chart_intraday") if d["chart_type"] == "1d" else t("chart_recent")
-        is_up = (d.get("month_change") or 0) >= 0
-        chart_b64 = render_chart_png(d["chart_dates"], d["chart_closes"], is_up, cur)
+        # 颜色绑「当日涨跌」（price vs prev_close），与新走势图的前收基准线一致
+        is_up = (d.get("day_change") or 0) >= 0
+        chart_b64 = render_chart_png(d["chart_dates"], d["chart_closes"], is_up, cur,
+                                     intraday=d.get("intraday"))
 
         primary, secondary = _primary_secondary(d)
         primary_e, secondary_e = escape(str(primary)), escape(str(secondary))

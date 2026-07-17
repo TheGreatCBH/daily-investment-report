@@ -246,3 +246,113 @@ class TestRenderChartEmpty:
 
         out = render_chart_png([], [], False, "¥")
         assert isinstance(out, str) and len(out) > 0
+
+
+class TestRenderChartIntraday:
+    """新几何走势图三条路径：us_extended / session 正常渲染，异常/缺失时回退 fallback。"""
+
+    def _us_intraday(self):
+        import pandas as pd
+
+        base = pd.Timestamp("2026-07-16 04:00", tz="America/New_York")
+        # 前一日盘后一段 + 隔夜缺口 + 今日盘前/常规/盘后
+        stamps, closes, sess = [], [], []
+        prev_post = pd.Timestamp("2026-07-15 16:00", tz="America/New_York")
+        for i in range(4):  # 前一日盘后
+            stamps.append(prev_post + pd.Timedelta(minutes=5 * i))
+            closes.append(100.0 + i * 0.1)
+            sess.append("post")
+        for i in range(30):  # 今日：pre → regular → post
+            ts = base + pd.Timedelta(minutes=30 * i)
+            stamps.append(ts)
+            closes.append(101.0 + i * 0.05)
+            tt = ts.time()
+            sess.append("pre" if tt.hour < 9 or (tt.hour == 9 and tt.minute < 30)
+                        else "post" if tt.hour >= 16 else "regular")
+        return {
+            "market_kind": "us_extended", "timestamps": stamps, "closes": closes,
+            "sessions": sess, "prev_close": 100.0,
+            "now": pd.Timestamp("2026-07-16 18:00", tz="America/New_York"),
+        }
+
+    def _session_intraday(self):
+        import pandas as pd
+
+        stamps, closes = [], []
+        start = pd.Timestamp("2026-07-16 09:30", tz="Asia/Hong_Kong")
+        for i in range(60):  # 上午 09:30–12:00
+            stamps.append(start + pd.Timedelta(minutes=5 * i))
+            closes.append(50.0 + i * 0.02)
+        afternoon = pd.Timestamp("2026-07-16 13:00", tz="Asia/Hong_Kong")
+        for i in range(60):  # 下午 13:00–16:00（午休缺口自动检出）
+            stamps.append(afternoon + pd.Timedelta(minutes=5 * i))
+            closes.append(51.2 - i * 0.01)
+        return {
+            "market_kind": "session", "timestamps": stamps, "closes": closes,
+            "prev_close": 50.5, "lead": 1.0, "tick_hm": [(11, 0), (12, 0), (13, 0), (14, 30)],
+        }
+
+    def test_us_extended_renders(self):
+        from daily_report.chart import render_chart_png
+
+        out = render_chart_png([], [], True, "$", intraday=self._us_intraday())
+        assert isinstance(out, str) and len(out) > 100
+
+    def test_session_renders(self):
+        from daily_report.chart import render_chart_png
+
+        out = render_chart_png([], [], False, "HK$", intraday=self._session_intraday())
+        assert isinstance(out, str) and len(out) > 100
+
+    def test_none_falls_back(self):
+        from daily_report.chart import render_chart_png
+
+        out = render_chart_png(["09:30", "10:00"], [1.0, 2.0], True, "$", intraday=None)
+        assert isinstance(out, str) and len(out) > 100
+
+    def test_malformed_intraday_falls_back(self):
+        # timestamps 存在但内容异常（closes 缺失）→ 不抛，回退 fallback
+        from daily_report.chart import render_chart_png
+
+        bad = {"market_kind": "session", "timestamps": [1, 2], "prev_close": 1.0}
+        out = render_chart_png(["09:30", "10:00"], [1.0, 2.0], True, "$", intraday=bad)
+        assert isinstance(out, str) and len(out) > 100
+
+    def _multiday_session(self):
+        # 跨日：上一完整交易日（含午休）+ 今日残段，中间隔夜缺口
+        import pandas as pd
+
+        stamps, closes = [], []
+        d1am = pd.Timestamp("2026-07-16 09:30", tz="Asia/Hong_Kong")
+        for i in range(30):  # 上午 09:30–11:55
+            stamps.append(d1am + pd.Timedelta(minutes=5 * i))
+            closes.append(50.0 + i * 0.03)
+        d1pm = pd.Timestamp("2026-07-16 13:00", tz="Asia/Hong_Kong")
+        for i in range(37):  # 下午 13:00–16:00（午休缺口自动检出）
+            stamps.append(d1pm + pd.Timedelta(minutes=5 * i))
+            closes.append(50.9 - i * 0.01)
+        d0 = pd.Timestamp("2026-07-17 09:30", tz="Asia/Hong_Kong")
+        for i in range(12):  # 今日残段（隔夜缺口自动检出）
+            stamps.append(d0 + pd.Timedelta(minutes=5 * i))
+            closes.append(50.5 + i * 0.02)
+        return {
+            "market_kind": "session", "timestamps": stamps, "closes": closes,
+            "prev_close": 49.8, "lead": 1.0, "tick_hm": [(11, 0), (12, 0), (13, 0), (14, 30)],
+        }
+
+    def test_session_multiday_renders(self):
+        # 跨日 session：既有午休（细连线）又有隔夜（加粗 jump），不崩
+        from daily_report.chart import render_chart_png
+
+        out = render_chart_png([], [], True, "HK$", intraday=self._multiday_session())
+        assert isinstance(out, str) and len(out) > 100
+
+    def test_low_price_renders(self):
+        # 低价股（价格接近、统一 2 位小数）渲染不崩
+        from daily_report.chart import render_chart_png
+
+        d = self._session_intraday()
+        d["closes"] = [10.75 + (i % 5) * 0.01 for i in range(len(d["closes"]))]
+        d["prev_close"] = 10.80
+        out = render_chart_png([], [], True, "¥", intraday=d)
+        assert isinstance(out, str) and len(out) > 100

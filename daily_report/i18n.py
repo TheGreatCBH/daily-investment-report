@@ -36,6 +36,7 @@ _STRINGS = {
         "label_volume": "量",
         "chart_intraday": "日内走势",
         "chart_recent": "近期走势",
+        "chart_prev_close": "前收",
 
         # 成交量 badge
         "high_volume": "放量",
@@ -77,6 +78,7 @@ _STRINGS = {
         "label_volume": "Vol",
         "chart_intraday": "Intraday",
         "chart_recent": "Recent trend",
+        "chart_prev_close": "Prev",
 
         "high_volume": "high vol",
         "low_volume": "low vol",

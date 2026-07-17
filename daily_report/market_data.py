@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
+from datetime import time as dtime
 
+import pandas as pd
 import yfinance as yf
 from dateutil import parser as date_parser
 
@@ -123,6 +125,15 @@ def _fetch_yf_ticker(symbol, search_terms, market, description=None):
     chart_dates = [d.strftime("%H:%M") for d in df_1d.index]
     chart_closes = [round(v, 2) for v in df_1d["Close"].tolist()]
 
+    # 新几何走势图数据（前收基准线 + 时段压缩 + 底纹）；helper 返回 None 时 chart 回退 fallback
+    if market in ("US", "TO"):
+        intraday = _build_us_intraday(t, df_1mo)
+    elif market == "HK":
+        intraday = _build_session_intraday(
+            t, "Asia/Hong_Kong", [(11, 0), (12, 0), (13, 0), (14, 30)], df_daily=df_1mo)
+    else:
+        intraday = None
+
     raw_news = t.news if t.news else []
 
     # ETF/基金：只用关键词搜索新闻；个股：用 ticker 新闻
@@ -182,11 +193,136 @@ def _fetch_yf_ticker(symbol, search_terms, market, description=None):
         "chart_dates": chart_dates,
         "chart_closes": chart_closes,
         "chart_type": chart_type,
+        "intraday": intraday,
         # search_terms / description 回灌进 dict，供 summarize_stock_news 的 ETF 关键词兜底
         # 与 LLM 相关性判断使用（否则那段逻辑拿不到值，等同死代码）
         "search_terms": search_terms,
         "description": description or "",
         "news": news_items,
+    }
+
+
+def _classify_us(ts):
+    """按 ET 本地时间把一个 bar 归为 pre / regular / post。"""
+    tt = ts.time()
+    if tt < dtime(9, 30):
+        return "pre"
+    if tt >= dtime(16, 0):
+        return "post"
+    return "regular"
+
+
+def _build_us_intraday(t, df_daily):
+    """美股/加股延长时段（含盘前后 + 前一交易日盘后）：组装 chart.py 的 us_extended 契约。
+
+    df_daily：已拉的日线（period="1mo"），取 iloc[-2] 作前收、其日期 16:00 ET 作起点。
+    数据不足时返回 None → chart 回退 fallback。
+    """
+    ET = "America/New_York"
+    try:
+        intra = t.history(period="3d", interval="5m", prepost=True)
+    except Exception as e:
+        logger.warning("美股延长时段分钟线拉取失败: %s", e)
+        return None
+    if intra.empty or len(df_daily) < 2:
+        return None
+
+    prev_close = float(df_daily["Close"].iloc[-2])
+    prev_day = df_daily.index[-2]
+    start_dt = prev_day.normalize() + pd.Timedelta(hours=16)  # 前一交易日 16:00 ET
+
+    idx = intra.index
+    idx = idx.tz_localize(ET) if idx.tz is None else idx.tz_convert(ET)
+    start_dt = start_dt.tz_localize(ET) if start_dt.tz is None else start_dt.tz_convert(ET)
+    now_dt = pd.Timestamp.now(tz=ET)
+
+    ts, closes, sessions = [], [], []
+    for tstamp, c in zip(idx, intra["Close"].tolist()):
+        if tstamp >= start_dt and pd.notna(c):
+            ts.append(tstamp)
+            closes.append(round(float(c), 2))
+            sessions.append(_classify_us(tstamp))
+    if len(ts) < 2:
+        return None
+    return {
+        "market_kind": "us_extended",
+        "timestamps": ts,
+        "closes": closes,
+        "sessions": sessions,
+        "prev_close": prev_close,
+        "now": now_dt,
+    }
+
+
+def _build_session_intraday(t, tz, tick_hm, lead=1.0, df_daily=None):
+    """港股 / A 股（无盘前后）单交易日走势，组装 chart.py 的 session 契约。
+
+    今日数据完整（收盘后跑）→ 只画今日；今日不完整（盘中 / NaN / 未开盘）→ 画
+    「上一完整交易日 + 今日残段」，跨日由 chart 侧的隔夜 jump 连接。
+    基准线 = 所画首日之前的日线收盘（即前两个交易日收盘）。NaN 分钟 bar 一律过滤。
+
+    t：yfinance Ticker（港股 .HK / A 股 .SS/.SZ 均可，A 股分钟线走 yfinance 比 akshare
+    当日 5m 前复权价更可靠——后者当日实时常返回 NaN）。df_daily 缺省时内部自取。
+    数据不足返回 None → chart 回退 fallback。
+    """
+    try:
+        intra = t.history(period="7d", interval="5m")
+        if df_daily is None:
+            df_daily = t.history(period="1mo")
+    except Exception as e:
+        logger.warning("session 分钟线拉取失败: %s", e)
+        return None
+    if intra.empty or df_daily is None or len(df_daily) < 2:
+        return None
+
+    idx = intra.index
+    idx = idx.tz_localize(tz) if idx.tz is None else idx.tz_convert(tz)
+
+    # 过滤 NaN，按交易日分组（保持时间序）
+    day_bars = {}
+    for tstamp, c in zip(idx, intra["Close"].tolist()):
+        if pd.notna(c):
+            day_bars.setdefault(tstamp.date(), []).append((tstamp, round(float(c), 2)))
+    days = sorted(day_bars)
+    if not days:
+        return None
+
+    # 完整性阈值：以近几日最大 bar 数为满日基准，今日 < 80% 视为不完整
+    full_n = max(len(day_bars[d]) for d in days)
+    today = days[-1]
+    today_full = len(day_bars[today]) >= full_n * 0.8
+
+    if today_full or len(days) == 1:
+        picked = [today]
+    else:
+        prev_full = next((d for d in reversed(days[:-1])
+                          if len(day_bars[d]) >= full_n * 0.8), None)
+        picked = [prev_full, today] if prev_full else [today]
+
+    # 基准线 = 所画首日之前的日线收盘
+    first_day = picked[0]
+    basis = None
+    for dd, cc in zip(reversed(df_daily.index.tolist()), reversed(df_daily["Close"].tolist())):
+        if dd.date() < first_day and pd.notna(cc):
+            basis = float(cc)
+            break
+    if basis is None:
+        basis = float(df_daily["Close"].iloc[-2])
+
+    ts, closes = [], []
+    for d in picked:
+        for tstamp, c in day_bars[d]:
+            ts.append(tstamp)
+            closes.append(c)
+    if len(ts) < 2:
+        return None
+    return {
+        "market_kind": "session",
+        "timestamps": ts,
+        "closes": closes,
+        "prev_close": basis,
+        "lead": lead,
+        "tick_hm": tick_hm,
     }
 
 

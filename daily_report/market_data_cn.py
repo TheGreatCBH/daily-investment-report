@@ -11,6 +11,7 @@ A 股（`.SS` / `.SZ`）：
 import logging
 
 import akshare as ak
+import yfinance as yf
 
 from .i18n import t
 
@@ -57,21 +58,20 @@ def fetch_a_share(symbol, search_terms=None, name=None, description=None):
             logger.warning("A 股名称查询失败 [%s]: %s，回退到代码", code, e)
             resolved_name = code
 
-    # 盘中 5 分钟线（最近一天）
-    chart_dates, chart_closes, chart_type = [], [], "fallback"
+    # 盘中走势：分钟线走 yfinance（A 股当日 5m 比 akshare 更可靠——后者当日实时前复权价
+    # 常返回 NaN；日线/市值/涨跌/新闻仍走 akshare）。与港股共用 market_data 的 session 组装：
+    # 今日不完整则「上一完整交易日 + 今日残段」，跨日 jump，基准 = 前两个交易日收盘。
+    chart_dates, chart_closes, chart_type, intraday = [], [], "fallback", None
+    from .market_data import _build_session_intraday
     try:
-        df_min = ak.stock_zh_a_minute(symbol=sina_sym, period="5", adjust="qfq")
-        if not df_min.empty:
-            df_min["day"] = df_min["day"].astype(str)
-            last_date = df_min["day"].iloc[-1][:10]
-            df_today = df_min[df_min["day"].str.startswith(last_date)]
-            if len(df_today) > 5:
-                # "2026-05-14 14:55:00" -> "14:55"（day_str 避免遮蔽 i18n.t）
-                chart_dates = [day_str[11:16] for day_str in df_today["day"]]
-                chart_closes = [round(float(v), 2) for v in df_today["close"]]
-                chart_type = "1d"
+        intraday = _build_session_intraday(
+            yf.Ticker(symbol), "Asia/Shanghai", [(10, 30), (11, 30), (14, 0)])
     except Exception as e:
-        logger.warning("A 股分钟线拉取失败 [%s]: %s，回退到日线走势", sina_sym, e)
+        logger.warning("A 股分钟线(yfinance)拉取失败 [%s]: %s，回退到日线走势", symbol, e)
+    if intraday:
+        chart_type = "1d"
+        chart_dates = [ts.strftime("%H:%M") for ts in intraday["timestamps"]]
+        chart_closes = intraday["closes"]
 
     if not chart_dates:
         df_m = df_year.tail(30)
@@ -124,6 +124,7 @@ def fetch_a_share(symbol, search_terms=None, name=None, description=None):
         "chart_dates": chart_dates,
         "chart_closes": chart_closes,
         "chart_type": chart_type,
+        "intraday": intraday,
         # 与 yfinance 分支同形状：回灌 search_terms / description 供下游 LLM 判断
         "search_terms": search_terms,
         "description": description or "",
