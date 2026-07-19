@@ -63,6 +63,9 @@ def fetch_a_share(symbol, search_terms=None, name=None, description=None):
     # 今日不完整则「上一完整交易日 + 今日残段」，跨日 jump，基准 = 前两个交易日收盘。
     chart_dates, chart_closes, chart_type, intraday = [], [], "fallback", None
     from .market_data import _build_session_intraday
+    # 基准线日线由 _build_session_intraday 内部自取 yfinance 日线——必须与 intraday 曲线
+    # 同源同复权口径，才能保证「线 vs 前收基准线」同尺度（不要改用 akshare 日线：两源
+    # 前复权口径/覆盖日期不同，会让基准线与曲线错位、涨跌方向失真）。
     try:
         intraday = _build_session_intraday(
             yf.Ticker(symbol), "Asia/Shanghai", [(10, 30), (11, 30), (14, 0)])

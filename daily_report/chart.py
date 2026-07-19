@@ -298,17 +298,20 @@ def _render_session(d, currency):
 
     # 刻度：前收(x=0) / 首日开盘 / 跨日后各日开盘 / 最后一日候选整点 / 末 bar
     tz = ts[0].tz
+    last_day = ts[-1].date()
+    last_day_idxs = [i for i in range(len(ts)) if ts[i].date() == last_day]
 
-    def nearest_to(day_date, h, m):
-        target = pd.Timestamp(day_date.strftime("%Y-%m-%d") + f" {h:02d}:{m:02d}", tz=tz)
-        return min(range(len(ts)), key=lambda i: abs((ts[i] - target).total_seconds()))
+    def nearest_to(h, m):
+        # 只在最后一日的 bar 里找：跨日残段若只有上午，(14,30) 这类整点在全局最近
+        # 会绑到残段末 bar 上、误标成「14:30」。限定当日范围避免错标。
+        target = pd.Timestamp(last_day.strftime("%Y-%m-%d") + f" {h:02d}:{m:02d}", tz=tz)
+        return min(last_day_idxs, key=lambda i: abs((ts[i] - target).total_seconds()))
 
     raw = [(0.0, t("chart_prev_close")), (lead, ts[0].strftime("%H:%M"))]
     for g in overnight:  # 跨日后次日开盘
         raw.append((sx[g], ts[g].strftime("%H:%M")))
-    last_day = ts[-1].date()
     for h, m in tick_hm:
-        i = nearest_to(last_day, h, m)
+        i = nearest_to(h, m)
         raw.append((sx[i], f"{h:02d}:{m:02d}"))
     raw.append((sx[-1], ts[-1].strftime("%H:%M")))
     ticks, labels = _dedup_ticks(raw, 0.5)

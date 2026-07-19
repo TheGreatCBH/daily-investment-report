@@ -227,6 +227,10 @@ def _build_us_intraday(t, df_daily):
     if intra.empty or len(df_daily) < 2:
         return None
 
+    # 前收基准 = iloc[-2]：yfinance 日线 iloc[-1] 恒为「当前会话」（= info.currentPrice，
+    # 盘前/盘中/盘后乃至隔夜都不会提前翻到下一日历日），故 iloc[-2] 恒 = info.previousClose，
+    # 与卡片 day_change 的基准一致。不要改用 now.date() 找「早于今日」——那会在隔夜时段
+    # 把当前会话误判成「昨日」、基准整体错取一天（实测 03:07 ET 会退化成只画盘后段）。
     prev_close = float(df_daily["Close"].iloc[-2])
     prev_day = df_daily.index[-2]
     start_dt = prev_day.normalize() + pd.Timedelta(hours=16)  # 前一交易日 16:00 ET
@@ -287,9 +291,11 @@ def _build_session_intraday(t, tz, tick_hm, lead=1.0, df_daily=None):
     if not days:
         return None
 
-    # 完整性阈值：以近几日最大 bar 数为满日基准，今日 < 80% 视为不完整
-    full_n = max(len(day_bars[d]) for d in days)
+    # 完整性阈值：满日基准只从「今日之前」各日取——若把今日也算进 max，今日 bar 数
+    # 恰为最多时阈值恒被满足，盘中残段就永远不会去借上一完整交易日。
     today = days[-1]
+    prior = days[:-1]
+    full_n = max((len(day_bars[d]) for d in prior), default=len(day_bars[today]))
     today_full = len(day_bars[today]) >= full_n * 0.8
 
     if today_full or len(days) == 1:
