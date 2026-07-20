@@ -9,6 +9,7 @@ A 股（`.SS` / `.SZ`）：
 本模块只补充提供 akshare 中文新闻替换 yfinance 的英文稀疏新闻。
 """
 import logging
+from datetime import time as dtime
 
 import akshare as ak
 import yfinance as yf
@@ -68,7 +69,8 @@ def fetch_a_share(symbol, search_terms=None, name=None, description=None):
     # 前复权口径/覆盖日期不同，会让基准线与曲线错位、涨跌方向失真）。
     try:
         intraday = _build_session_intraday(
-            yf.Ticker(symbol), "Asia/Shanghai", [(10, 30), (11, 30), (14, 0)])
+            yf.Ticker(symbol), "Asia/Shanghai", [(10, 30), (11, 30), (14, 0)],
+            lunch=(dtime(11, 30), dtime(13, 0)))
     except Exception as e:
         logger.warning("A 股分钟线(yfinance)拉取失败 [%s]: %s，回退到日线走势", symbol, e)
     if intraday:

@@ -356,3 +356,80 @@ class TestRenderChartIntraday:
         d["prev_close"] = 10.80
         out = render_chart_png([], [], True, "¥", intraday=d)
         assert isinstance(out, str) and len(out) > 100
+
+
+class TestSessionLunchFilter:
+    """午休按固定时钟窗口剔除数据源 forward-fill 的假 bar（平安式午休填平 → 恢复午休缺口）。
+
+    yfinance 对不同 A 股午休处理不一致：茅台午休留空（11:30 直接跳 13:00），
+    平安午休却每 5 分钟补一根 flat forward-fill bar（11:35–12:55 价格不动）。
+    午休无交易是交易所固定规则，故按时钟窗口剔除，不依赖数据源是否留空。
+    """
+
+    class _FakeTicker:
+        def __init__(self, intra, daily):
+            self._intra, self._daily = intra, daily
+
+        def history(self, period=None, interval=None, **kw):
+            return self._intra if interval == "5m" else self._daily
+
+    def _make_day(self, fill_lunch):
+        import pandas as pd
+
+        stamps, closes = [], []
+        cur = pd.Timestamp("2026-07-17 09:30", tz="Asia/Shanghai")
+        end_am = pd.Timestamp("2026-07-17 11:30", tz="Asia/Shanghai")
+        while cur <= end_am:  # 上午 09:30–11:30
+            stamps.append(cur)
+            closes.append(10.80)
+            cur += pd.Timedelta(minutes=5)
+        if fill_lunch:  # 午休 forward-fill 假 bar 11:35–12:55
+            cur = end_am + pd.Timedelta(minutes=5)
+            start_pm = pd.Timestamp("2026-07-17 13:00", tz="Asia/Shanghai")
+            while cur < start_pm:
+                stamps.append(cur)
+                closes.append(10.80)
+                cur += pd.Timedelta(minutes=5)
+        cur = pd.Timestamp("2026-07-17 13:00", tz="Asia/Shanghai")
+        end_pm = pd.Timestamp("2026-07-17 15:00", tz="Asia/Shanghai")
+        while cur <= end_pm:  # 下午 13:00–15:00
+            stamps.append(cur)
+            closes.append(10.90)
+            cur += pd.Timedelta(minutes=5)
+        intra = pd.DataFrame({"Close": closes}, index=pd.DatetimeIndex(stamps))
+        daily = pd.DataFrame(
+            {"Close": [10.5, 10.7, 10.9]},
+            index=pd.DatetimeIndex(pd.to_datetime(["2026-07-15", "2026-07-16", "2026-07-17"])),
+        )
+        return intra, daily
+
+    def _build(self, fill_lunch):
+        from datetime import time as dtime
+
+        from daily_report.market_data import _build_session_intraday
+
+        intra, daily = self._make_day(fill_lunch)
+        t = self._FakeTicker(intra, daily)
+        return _build_session_intraday(
+            t, "Asia/Shanghai", [(10, 30), (11, 30), (14, 0)],
+            df_daily=daily, lunch=(dtime(11, 30), dtime(13, 0)))
+
+    def test_filled_lunch_bars_removed(self):
+        d = self._build(fill_lunch=True)
+        assert d is not None
+        times = [ts.strftime("%H:%M") for ts in d["timestamps"]]
+        # 午休开区间 (11:30, 13:00) 内的假 bar 全部剔除
+        assert not any("11:35" <= x < "13:00" for x in times), times
+        # 两端收盘/开盘 bar 保留
+        assert "11:30" in times and "13:00" in times
+        # 剔除后午休恢复成缺口：相邻 11:30→13:00 = 1.5h（chart 侧会检出并压缩）
+        i = times.index("11:30")
+        assert times[i + 1] == "13:00"
+
+    def test_empty_lunch_unaffected(self):
+        # 茅台式午休本就留空 → 剔除逻辑零影响，两端仍在、无午休 bar
+        d = self._build(fill_lunch=False)
+        assert d is not None
+        times = [ts.strftime("%H:%M") for ts in d["timestamps"]]
+        assert not any("11:35" <= x < "13:00" for x in times)
+        assert "11:30" in times and "13:00" in times

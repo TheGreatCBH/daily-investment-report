@@ -130,7 +130,8 @@ def _fetch_yf_ticker(symbol, search_terms, market, description=None):
         intraday = _build_us_intraday(t, df_1mo)
     elif market == "HK":
         intraday = _build_session_intraday(
-            t, "Asia/Hong_Kong", [(11, 0), (12, 0), (13, 0), (14, 30)], df_daily=df_1mo)
+            t, "Asia/Hong_Kong", [(11, 0), (12, 0), (13, 0), (14, 30)], df_daily=df_1mo,
+            lunch=(dtime(12, 0), dtime(13, 0)))
     else:
         intraday = None
 
@@ -258,12 +259,18 @@ def _build_us_intraday(t, df_daily):
     }
 
 
-def _build_session_intraday(t, tz, tick_hm, lead=1.0, df_daily=None):
+def _build_session_intraday(t, tz, tick_hm, lead=1.0, df_daily=None, lunch=None):
     """港股 / A 股（无盘前后）单交易日走势，组装 chart.py 的 session 契约。
 
     今日数据完整（收盘后跑）→ 只画今日；今日不完整（盘中 / NaN / 未开盘）→ 画
     「上一完整交易日 + 今日残段」，跨日由 chart 侧的隔夜 jump 连接。
     基准线 = 所画首日之前的日线收盘（即前两个交易日收盘）。NaN 分钟 bar 一律过滤。
+
+    lunch=(start, end)（datetime.time）：午休时段。交易所午休不交易，落在开区间
+    (start, end) 内的分钟 bar 一律是数据源 forward-fill 的假 bar（yfinance 对部分标的
+    午休会每 5min 补一根 flat bar，如平安；另一些留空，如茅台），按此固定时钟窗口剔除，
+    使午休恢复成缺口交给 chart 侧压缩——不依赖数据源是否留空这一不可靠信号。两端的
+    上午收盘 / 下午开盘 bar（== start / end）保留。lunch=None 时不剔除。
 
     t：yfinance Ticker（港股 .HK / A 股 .SS/.SZ 均可，A 股分钟线走 yfinance 比 akshare
     当日 5m 前复权价更可靠——后者当日实时常返回 NaN）。df_daily 缺省时内部自取。
@@ -282,11 +289,17 @@ def _build_session_intraday(t, tz, tick_hm, lead=1.0, df_daily=None):
     idx = intra.index
     idx = idx.tz_localize(tz) if idx.tz is None else idx.tz_convert(tz)
 
-    # 过滤 NaN，按交易日分组（保持时间序）
+    # 过滤 NaN + 剔除午休窗口内的 forward-fill 假 bar，按交易日分组（保持时间序）
+    lunch_start, lunch_end = lunch if lunch else (None, None)
     day_bars = {}
     for tstamp, c in zip(idx, intra["Close"].tolist()):
-        if pd.notna(c):
-            day_bars.setdefault(tstamp.date(), []).append((tstamp, round(float(c), 2)))
+        if pd.isna(c):
+            continue
+        # 午休无交易：开区间 (lunch_start, lunch_end) 内的 bar 全是数据源填充，剔除；
+        # 两端的上午收盘 / 下午开盘 bar 保留，剔除后午休恢复成缺口交给 chart 压缩。
+        if lunch_start is not None and lunch_start < tstamp.time() < lunch_end:
+            continue
+        day_bars.setdefault(tstamp.date(), []).append((tstamp, round(float(c), 2)))
     days = sorted(day_bars)
     if not days:
         return None
